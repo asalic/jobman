@@ -23,9 +23,35 @@ spec:
                 - -c
                 - "export QUEUE=jobman-queue-position && kubectl get jobs --all-namespaces -o json \
                     | jq '[.items[] | select((.status.failed == null and .status.failed==0) or (.status.succeeded == null and .status.succeeded==0) or (.status.active==1)) | select(.metadata.namespace | startswith(\"user-\"))]' \
-                    | jq '{updated: now | todate, jobs: [ .[] | {namespace: .metadata.namespace, name: .metadata.name, updated: .metadata.creationTimestamp, resources: {flavor: .metadata.annotations.\"chaimeleon.eu/jobResourcesFlavor\", requests: .spec.template.spec.containers[0].resources.requests}} ]}' \
-                      | kubectl create configmap $QUEUE --from-file=$QUEUE=/dev/stdin --dry-run=client -o yaml \
-                      | kubectl apply -f -"
+                    | jq '{
+                          updated: now | todate,
+                          jobs: [ .[] | {
+                              namespace: .metadata.namespace, 
+                              name: .metadata.name, 
+                              updated: .metadata.creationTimestamp, 
+                              status: {
+                                active: .status.active,
+                                ready: .status.ready,
+                                failed: .status.failed,
+                                succeeded: .status.succeeded,
+                              },
+                              podStatus: (\"kubectl get pods --selector=job-name=\" + .metadata.name + \" -n \" + .metadata.namespace + \" -o jsonpath=\\\"{.items[0].status.phase}\\\"\"),
+                              resources: {
+                                flavor: .metadata.annotations.\"chaimeleon.eu/jobResourcesFlavor\", 
+                                requests: .spec.template.spec.containers[0].resources.requests
+                              }
+                          }]
+                        }' \
+                        > ~/queue-tmp.json \
+                      && echo '[' > ~/queue_new_jobs.json\
+                      && cat ~/queue-tmp.json \
+                      | jq -c '.jobs[]' \
+                      | while read -r job; do cmd=$(echo \"$job\" | jq -r '.podStatus'); result=$(bash -c \"$cmd\"); echo \"$job\" | jq --arg result \"$result\" '.podStatus = $result' >> ~/queue_new_jobs.json && echo ',' >> ~/queue_new_jobs.json; done\
+                      && sed -i '$c\'']'  ~/queue_new_jobs.json\
+                      && jq -s '.[0] as $queue_new_jobs | .[1] | .jobs = $queue_new_jobs' ~/queue_new_jobs.json ~/queue-tmp.json > ~/queue.json\
+                      && cat ~/queue.json | kubectl create configmap $QUEUE --from-file=$QUEUE=/dev/stdin  --dry-run=client -o yaml \
+                      | kubectl apply -f -
+                      && rm ~/*.json"
               resources:
                 requests:
                   cpu: 250m
