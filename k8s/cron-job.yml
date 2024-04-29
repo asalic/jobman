@@ -12,6 +12,8 @@ spec:
       backoffLimit: 0
       template:
         spec:
+          nodeSelector:
+            chaimeleon.eu/target: core-services
           restartPolicy: Never
           serviceAccountName: jobman-queue-position
           containers:
@@ -41,7 +43,8 @@ spec:
                       && cat ~/queue-tmp.json \
                       | jq -c '.jobs[]' \
                       | while read -r job; do cmd=$(echo \"$job\" | jq -r '.podStatus'); result=$(bash -c \"$cmd\"); echo \"$job\" | jq --arg result \"$result\" '.podStatus = $result' >> ~/queue_new_jobs.json && echo ',' >> ~/queue_new_jobs.json; done\
-                      && sed -i '$c\'']'  ~/queue_new_jobs.json\
+                      && sed -i '${/,/d;}' ~/queue_new_jobs.json\
+                      && echo ']' >> ~/queue_new_jobs.json\
                       && jq -s '.[0] as $queue_new_jobs | .[1] | .jobs = $queue_new_jobs' ~/queue_new_jobs.json ~/queue-tmp.json > ~/queue.json\
                       && cat ~/queue.json | kubectl create configmap $QUEUE --from-file=$QUEUE=/dev/stdin  --dry-run=client -o yaml \
                       | kubectl apply -f -
