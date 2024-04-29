@@ -150,7 +150,7 @@ export default class DisplayService {
         this.km.list()
             .then(r => this.simpleMsg(r, 
                 () => {
-                    const enabledColumns: string[] = ["name", "status", "Launch Date"];
+                    const enabledColumns: string[] = ["name", "status", "flavor", "Launch Date"];
                     const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
                     const t = new Table({
                         enabledColumns,
@@ -162,8 +162,14 @@ export default class DisplayService {
                             alignment: 'left'
                           },
                           {
+                            name: "flavor",
+                            maxLen: Math.floor(totalNoColsAvailable * 0.10),
+                            title: "Flavor",
+                            alignment: 'center'
+                          },
+                          {
                             name: "status",
-                            maxLen: Math.floor(totalNoColsAvailable * 0.20),
+                            maxLen: Math.floor(totalNoColsAvailable * 0.10),
                             title: "Status",
                             alignment: 'center'
                           }

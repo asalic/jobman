@@ -211,7 +211,8 @@ export default class KubeManager {
                             uid: e.metadata?.uid,
                             status: await this.getStatusJob(jn, e.status),
                             dateLaunched: e.metadata?.creationTimestamp,
-                            position: 0//jobsQueue?.data?.["jobs"]?.find(j => j.name === jn && j.user === this.getUsername())?.
+                            position: 0,//jobsQueue?.data?.["jobs"]?.find(j => j.name === jn && j.user === this.getUsername())?.
+                            flavor: e.metadata?.annotations?.["chaimeleon.eu/jobResourcesFlavor"] ?? "-"
                         });
                     }
                 }
