@@ -27,14 +27,8 @@ spec:
                           updated: now | todate,
                           jobs: [ .[] | {
                               namespace: .metadata.namespace, 
-                              name: .metadata.name, 
-                              updated: .metadata.creationTimestamp, 
-                              status: {
-                                active: .status.active,
-                                ready: .status.ready,
-                                failed: .status.failed,
-                                succeeded: .status.succeeded,
-                              },
+                              controllerUid: .metadata.labels.\"controller-uid\", 
+                              updated: .metadata.creationTimestamp,
                               podStatus: (\"kubectl get pods --selector=job-name=\" + .metadata.name + \" -n \" + .metadata.namespace + \" -o jsonpath=\\\"{.items[0].status.phase}\\\"\"),
                               resources: {
                                 flavor: .metadata.annotations.\"chaimeleon.eu/jobResourcesFlavor\", 

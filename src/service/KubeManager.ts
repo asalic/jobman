@@ -71,37 +71,37 @@ export default class KubeManager {
                             }
                         }
 
-                        let label  = undefined;
-                        let cnt: QueueResult | undefined = undefined;
+                        let flavor  = undefined;
+                        let qr: QueueResult | undefined = undefined;
                         let id: string | undefined = undefined;
-                        let isUserJob = false;
-                        if (j.namespace === this.getNamespace()) {
-                            isUserJob = true;
-                        }
-                        if (j.resources.label) {
-                            label = j.resources.label;
-                            id = label;
+                        // /let isUserJob = false;
+                        // if (j.namespace === this.getNamespace()) {
+                        //     isUserJob = true;
+                        // }
+                        if (j.resources.flavor) {
+                            flavor = j.resources.flavor;
+                            id = flavor;
                         } else {
                             //flavor = "<no label>";//`unk-${uuidv4()}`
                             id = `${cpu}/${memory}/${gpu}`;
                         }
-                        cnt = result.get(id);
-                        if (cnt) {
-                            cnt.count = cnt.count + 1;
-                            if (isUserJob) {
-                                cnt.userJobsCnt = cnt.userJobsCnt + 1;
-                            }
-                            result.set(id, cnt);
-                        } else {
-                            result.set(id, {
+                        qr = result.get(id);
+                        if (qr === undefined) {
+                            qr = {
                                 id,
-                                label,
-                                count: 1,
+                                flavor,
+                                totalPending: 0,
+                                totalRunning: 0,
+                                //count: 1,
                                 cpu, memory, gpu,
-                                userJobsCnt: isUserJob ? 1 : 0
-                            });
+                                //userJobsCnt: isUserJob ? 1 : 0
+                            };
+                            result.set(id, qr);
                         }
-                        
+
+                        //qr.count = qr.count + 1;
+                        qr.totalPending += (j.podStatus === "Pending" ? 1 : 0);
+                        qr.totalRunning += (j.podStatus === "Running" ? 1 : 0);                     
                         
                     }
                     return new KubeOpReturn(this.getStatusKubeOp(200), undefined, {result, updated: queue.updated});
@@ -571,7 +571,7 @@ export default class KubeManager {
                 // we have to check what the pod is doing
                 const podPhase: string | undefined =  (await this.getJobPodInfo(jobName))?.status?.phase?.toLowerCase();
                 switch (podPhase) {
-                    case "pending": return EJobStatus.Waiting;
+                    case "pending": return EJobStatus.Pending;
                     case "running": return EJobStatus.Running;
                     case "succeeded": return EJobStatus.Succeeded;
                     case "failed": return EJobStatus.Failed;
@@ -584,7 +584,7 @@ export default class KubeManager {
             } else if (!stat.active && stat.failed && stat.failed >= 1) {
                 return EJobStatus.Failed;
             }  else if (stat.active) {
-                return EJobStatus.Waiting;
+                return EJobStatus.Pending;
             } else {
                 return EJobStatus.Unknown;
             }
@@ -643,5 +643,18 @@ export default class KubeManager {
     protected fetchCustom(url: string, init?: RequestInit): Promise<Response> {
         return fetch(url, init);
     }
+
+    // protected updateQueueResultJobStats(qrStats: QueueResultJobStats, kubeStats: V1JobStatus) {
+    //     qrStats.total += 1;
+    //     let finished = 0;
+    //     if (kubeStats.succeeded !== undefined && kubeStats.succeeded > 0) {
+    //         qrStats.succeeeded += 1;
+    //         ++finished
+    //     }
+    //     if (kubeStats.failed !== undefined && kubeStats.failed > 0) {
+    //         qrStats.succeeeded += 1;
+    //         ++finished;
+    //     }
+    // }
     
 }

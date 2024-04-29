@@ -48,28 +48,34 @@ export default class DisplayService {
         this.km.queue()
             .then(r => this.simpleMsg(r,  () => {
                     if (r.payload) {
-                        const enabledColumns: string[] = ["Flavor", "Jobs (total/yours)", "CPU/Memory/GPUs"];
+                        const enabledColumns: string[] = ["Flavor", "CPUs/Memory/GPUs", "Jobs pending", "Jobs running"];
                         const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
                         const t = new Table({
                             enabledColumns,
                             columns: [],
                             computedColumns:[
                                 {
+                                    name: "Flavor",
+                                    maxLen: Math.floor(totalNoColsAvailable * 0.45),
+                                    function: (row: QueueResult) => row.flavor ?? "<no label>",
+                                    alignment: 'center'
+                                },
+                                {
                                     name: "CPUs/Memory/GPUs",
-                                    maxLen: Math.floor(totalNoColsAvailable * 0.30),
+                                    maxLen: Math.floor(totalNoColsAvailable * 0.25),
                                     function: (row: QueueResult) => `${row.cpu ?? "-"}/${row.memory ?? "-"}/${row.gpu ?? "-"}`, 
                                     alignment: 'center'
                                 },
                                 {
-                                    name: "Flavor",
-                                    maxLen: Math.floor(totalNoColsAvailable * 0.50),
-                                    function: (row: QueueResult) => row.label ?? "<no label>",
+                                    name: "Jobs pending",
+                                    maxLen: Math.floor(totalNoColsAvailable * 0.15),
+                                    function: (row: QueueResult) => row.totalPending,
                                     alignment: 'center'
                                 },
                                 {
-                                    name: "Jobs (total/yours)",
-                                    maxLen: Math.floor(totalNoColsAvailable * 0.20),
-                                    function: (row: QueueResult) => `${row.count}/${row.userJobsCnt}`,
+                                    name: "Jobs running",
+                                    maxLen: Math.floor(totalNoColsAvailable * 0.15),
+                                    function: (row: QueueResult) => row.totalRunning,
                                     alignment: 'center'
                                 }
                             ]

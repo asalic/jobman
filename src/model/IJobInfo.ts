@@ -1,6 +1,6 @@
 export enum EJobStatus {
-    Waiting = "Waiting", 
-    WaitingError = "Waiting - error", 
+    Pending = "Pending", 
+    PendingError = "Pending - error", 
     Running = "Running", 
     Succeeded = "Succeeded", 
     Failed = "Failed", 
