@@ -106,7 +106,7 @@ The tag of the image is not required, as Harbor stores the description per image
 ### List the Kubernetes jobs queue
 
 If you want to see how many jobs with a certain requests configuration are active (waiting in the queue or already running), you can use the **queue** command.
-Currently, there is no distinction between different extend resources for GPUs.
+Currently, there is no distinction between different GPU extended resources.
 Therefore, you have have both Nvidia and AMD, defined by the keys "nvidia.com/gpu" and "amd.com/gpu" respectively, and you launch a job requesting both, **jobman** will sum their count and display it.
 You can use flavors to separate various configurations of the resources.
 
@@ -119,10 +119,9 @@ Conflicting flavor names + resources configurations result in the group algorith
 
 The output is a table showing:
 
-- how many jobs with a certain resources configuration are curently active
-- how many of those jobs are yours
 - what resources configuration are those jobs requesting
 - which flavor are they using for their resources configuration (if any, __<no name>__ means the launched jobs' resources configuration has no name defined)
+- how many jobs using a certain resources flavor or plain resources request are pending and how many are running. These numbers include your jobs (pending or executing, respectively).
 
 ```jobman queue```
 

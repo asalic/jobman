@@ -10,7 +10,7 @@ jobman [`<jobman_options>`] [`<command>`] [`<command_options>`]
 `<command>` can be one of the following:
   -  **images**:  lists all available images on Harbor that can be used to launch the Kubernetes job with
   -  **image-details**:  obtains the associated description for an image on Harbor
-  -  **queue**: lists information regarding the kubernetes jobs queue, grouped by flavors/requests
+  -  **queue**: lists information regarding the kubernetes jobs queue, grouped by flavors/requests; The number of pending and of running jobs respectively include yours.
   -  **submit**:  submits a job to Kubernetes
   -  **list**:  lists all existing jobs, including those that ended (successfully or not); Please keep in mind that this command lists the job objects on the platform, it may happen that after deleting a job, its Kubernetes object might get deleted before its Kubernetes pod object, therefore the job won't appear in the list, but parts of it may still be available on the platform
   -  **details**:  displays the details of a specific, existing job; it outputs a JSON with all the information held by Kubernetes about a specific job, including its detailed status and  information about the underlying pod

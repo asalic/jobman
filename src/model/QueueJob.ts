@@ -1,10 +1,13 @@
+
 export default class QueueJob {
 
     namespace: string;
-    name: string;
+    //name: string;
+    controllerUid: string;
     creationDate: Date;
+    podStatus: string | null | undefined;
     resources: {
-        label: string;
+        flavor: string;
         requests?: {
             [key: string]: string;
         }

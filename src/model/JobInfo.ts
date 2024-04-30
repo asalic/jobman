@@ -7,5 +7,6 @@ export default class JobInfo implements IJobInfo {
     status: EJobStatus;
     dateLaunched?: Date | undefined;
     position: number;
+    flavor: string;
     
 }
