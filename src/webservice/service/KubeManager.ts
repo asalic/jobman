@@ -4,34 +4,36 @@ import { KubeConfig, BatchV1Api, V1Job, V1JobStatus, V1DeleteOptions, Watch,
         V1PodSecurityContext, V1ResourceRequirements, V1Status } from '@kubernetes/client-node';
 import { v4 as uuidv4 }  from "uuid";
 import log from "loglevel";
-import fetch, { RequestInit, Response } from "node-fetch";
+import fetch from "node-fetch";
+import type { RequestInit, Response } from "node-fetch";
 import https from "https";
 import http from 'http';
 import fs from "node:fs";
 //import path from "node:path";
-
-import { IJobInfo, EJobStatus } from '../model/IJobInfo.js';
-import JobInfo from '../model/JobInfo.js';
-import ParameterException from '../model/exception/ParameterException.js';
-import SubmitProps from '../model/args/SubmitProps.js';
-import { KubeConfigLocal, KubeConfigType, KubeResourcesFlavor, SecurityContext, Settings, AnnotationType } from '../model/Settings.js';
+import { EJobStatus } from '../../common/model/IJobInfo.js';
+import type { IJobInfo } from '../../common/model/IJobInfo.js';
+import JobInfo from '../../common/model/JobInfo.js';
+import ParameterException from '../../common/model/exception/ParameterException.js';
+import type SubmitProps from '../../common/model/args/SubmitProps.js';
 //import NotImplementedException from '../model/exception/NotImplementedException.js';
-import { KubeOpReturn, KubeOpReturnStatus } from '../model/KubeOpReturn.js';
+import { KubeOpReturn, KubeOpReturnStatus } from '../../common/model/KubeOpReturn.js';
 import UnhandledValueException from '../model/exception/UnhandledValueException.js';
-import ImageDetails from '../model/ImageDetails.js';
-import HarborRepository from '../model/HarborRepository.js';
-import { HarborRespositoryArtifact } from '../model/HarborRespositoryArtifact.js';
+import type ImageDetails from '../../common/model/ImageDetails.js';
+import type HarborRepository from '../model/HarborRepository.js';
+import type { HarborRespositoryArtifact } from '../model/HarborRespositoryArtifact.js';
 import KubeException from '../model/exception/KubeException.js';
-import DetailsProps from '../model/args/DetailsProps.js';
-import LogProps from '../model/args/LogProps.js';
-import DeleteProps from '../model/args/DeleteProps.js';
-import ImageDetailsProps from '../model/args/ImageDetailsProps.js';
+import type DetailsProps from '../../common/model/args/DetailsProps.js';
+import type LogProps from '../../common/model/args/LogProps.js';
+import type DeleteProps from '../../common/model/args/DeleteProps.js';
+import type ImageDetailsProps from '../../common/model/args/ImageDetailsProps.js';
 import KubeResourcesPrep from './KubeResourcesPrep.js';
-import QueueResult from '../model/QueueResult.js';
-import QueueConfigMap from '../model/QueueConfigMap.js';
-import QueueResultDisplay from '../model/QueueResultDisplay.js';
-import DeleteJobHandlerResult from '../model/DeleteJobHandlerResult.js';
+import QueueResult from '../../common/model/QueueResult.js';
+import type QueueConfigMap from '../model/QueueConfigMap.js';
+import type QueueResultDisplay from '../../common/model/QueueResultDisplay.js';
+import type DeleteJobHandlerResult from '../model/DeleteJobHandlerResult.js';
 import LoggerService from './LoggerService.js';
+import { AnnotationType, KubeConfigType } from "../model/SettingsWebService.js";
+import type { KubeConfigLocal, KubeResourcesFlavor, SecurityContext, SettingsWebService } from "../model/SettingsWebService.js";
 
 
 export default class KubeManager {
@@ -40,10 +42,10 @@ export default class KubeManager {
     protected clusterConfig: KubeConfig;
     protected k8sApi: BatchV1Api;
     protected k8sCoreApi: CoreV1Api;
-    protected settings: Settings;
+    protected settings: SettingsWebService;
     protected watch: Watch;
 
-    public constructor(settings: Settings) {
+    public constructor(settings: SettingsWebService) {
         this.logger = new LoggerService();
         this.settings = settings;
         this.clusterConfig = this.loadKubeConfig(settings.kubeConfig);
@@ -253,54 +255,18 @@ export default class KubeManager {
     }
 
     public async images(): Promise<KubeOpReturn<ImageDetails[]>> {
-        const projsUrl = `${this.settings.harbor.url}/api/v2.0/projects`
-        const reposUrl = `${projsUrl}/${this.settings.harbor.project}/repositories`;
-        console.log(`Getting repos from ${reposUrl}`);
-        const agent = new https.Agent({
-            rejectUnauthorized: false,
-          });
-        
-        let pageNum = 1;
-        let reposCnt = 0;
-        const pageSize = 100;
         const result: ImageDetails[] = [];
-        let error = false;
-        do {
-            const response: Response = await this.fetchCustom(`${reposUrl}?page=${pageNum}&page_size=${pageSize}`, {agent});
-            if (response.ok) {
-                const prjRepos: HarborRepository[] = await response.json() as HarborRepository[];
-                reposCnt = prjRepos.length;
-                for (const repo of prjRepos) {
-                    // Get repo name, remove project name 
-                    const name: string = repo.name.substring(repo.name.indexOf("/") + 1, repo.name.length);
-                    const desc: string = repo.description;
-                    const tags: string[] = [];
-                    result.push({name, tags, desc})
-                    
-                    const artsUrl = `${reposUrl}/${name}/artifacts`;
-                    const rArtifacts: Response = await this.fetchCustom(`${artsUrl}?page_size=${repo.artifact_count}`, {agent});
-                    if (rArtifacts.ok) {
-                        const arts: HarborRespositoryArtifact[] = await rArtifacts.json() as HarborRespositoryArtifact[];
-                        for (const art of arts ) {
-                            if (art.tags !== null)
-                                tags.push(...art.tags.map(t => t.name));
-                        }
-                    } else {
-                        console.warn(`Unable to load artifacts from ${artsUrl}`);
-                    }
-                } 
-                ++pageNum;      
-            } else {
-                error = true;
-                console.error(`Unable to load repositories from '${reposUrl}?page=${pageNum}&page_size=${pageSize}', API responded with code '${response.statusText}' and message: ${JSON.stringify(await response.json())}`);
-                // If the first page fails, don't try again
-                break;
-            }
-        } while (reposCnt === pageSize);
-        if (error)
-            return new KubeOpReturn(KubeOpReturnStatus.Error, `Unable to load repositories from '${reposUrl}`, result);
-        else
-            return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, result);
+        for (const [p, t] of [[this.settings.harbor.project, null], [this.settings.harbor.projectProtected, this.settings.harbor.projectProtectedToken]]) {
+            if (p) {
+                const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(p, t);
+                if (projImgs.isOk() && projImgs.payload) {
+                    result.push(...projImgs.payload);
+                } else {
+                    console.error(projImgs.message);
+                }
+            }            
+        }
+        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, result);
     }
 
     public async details(props: DetailsProps): Promise<KubeOpReturn<V1Job | null>> {
@@ -389,6 +355,66 @@ export default class KubeManager {
         } else {
             return new KubeOpReturn(KubeOpReturnStatus.Warning, "No predefined flavors found in the application's settings files.", undefined);
         }
+
+    }
+
+    protected async getHarborImages(project: string, token?: string | null | undefined): Promise<KubeOpReturn<ImageDetails[]>> {
+        const projsUrl = `${this.settings.harbor.url}/api/v2.0/projects`
+        const reposUrl = `${projsUrl}/${project}/repositories`;
+        console.log(`Getting repos from ${reposUrl}`);
+        const agent = new https.Agent({
+            rejectUnauthorized: false,
+          });
+        
+        let pageNum = 1;
+        let reposCnt = 0;
+        const pageSize = 100;
+        const result: ImageDetails[] = [];
+        let error = false;
+        do {
+            const response: Response = await this.fetchCustom(`${reposUrl}?page=${pageNum}&page_size=${pageSize}`, 
+                {
+                    agent,
+                    ...token && {headers: ["Autorization", `Bearer ${token}`]}
+                });
+            if (response.ok) {
+                const prjRepos: HarborRepository[] = await response.json() as HarborRepository[];
+                reposCnt = prjRepos.length;
+                for (const repo of prjRepos) {
+                    // Get repo name, remove project name 
+                    const name: string = repo.name.substring(repo.name.indexOf("/") + 1, repo.name.length);
+                    const desc: string = repo.description;
+                    const tags: string[] = [];
+                    result.push({name, tags, desc})
+                    
+                    const artsUrl = `${reposUrl}/${name}/artifacts`;
+                    const rArtifacts: Response = await this.fetchCustom(`${artsUrl}?page_size=${repo.artifact_count}`, 
+                        {
+                            agent,
+                            ...token && {headers: ["Autorization", `Bearer ${token}`]}
+                        });
+                    if (rArtifacts.ok) {
+                        const arts: HarborRespositoryArtifact[] = await rArtifacts.json() as HarborRespositoryArtifact[];
+                        for (const art of arts ) {
+                            if (art.tags !== null)
+                                tags.push(...art.tags.map(t => t.name));
+                        }
+                    } else {
+                        console.warn(`Unable to load artifacts from ${artsUrl}`);
+                    }
+                } 
+                ++pageNum;      
+            } else {
+                error = true;
+                console.error(`Unable to load repositories from '${reposUrl}?page=${pageNum}&page_size=${pageSize}', API responded with code '${response.statusText}' and message: ${JSON.stringify(await response.json())}`);
+                // If the first page fails, don't try again
+                break;
+            }
+        } while (reposCnt === pageSize);
+        if (error)
+            return new KubeOpReturn(KubeOpReturnStatus.Error, `Unable to load repositories from '${reposUrl}`, result);
+        else
+            return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, result);
 
     }
 

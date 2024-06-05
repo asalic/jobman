@@ -1,4 +1,4 @@
-import JobInfo from "./JobInfo.js";
+import JobInfo from "../../common/model/JobInfo.js";
 
 
 export default class JobInfoDetails extends JobInfo {

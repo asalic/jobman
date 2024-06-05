@@ -1,4 +1,5 @@
-import { IJobInfo, EJobStatus } from "./IJobInfo.js";
+import { EJobStatus } from "./IJobInfo.js";
+import type { IJobInfo } from "./IJobInfo.js";
 
 export default class JobInfo implements IJobInfo {
     

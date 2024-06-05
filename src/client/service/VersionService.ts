@@ -4,9 +4,9 @@ import zlib from "node:zlib";
 import { homedir } from 'os';
 import path from 'path';
 
-import { NewVersion } from "../model/Settings.js";
-import UnhandledValueException from "../model/exception/UnhandledValueException.js";
-import LastUpdateCheck from "../model/LastUpdateCheck.js";
+import type { NewVersion } from "../model/SettingsClient.js";
+import UnhandledValueError from "../error/UnhandledValueError.js";
+import type LastUpdateCheck from "../model/LastUpdateCheck.js";
 import { Readable } from "node:stream";
 
 export default class VersionService {
@@ -38,7 +38,7 @@ export default class VersionService {
             } else if (checkAfter.endsWith("s")) {
                 return Number(checkAfter.substring(0, checkAfter.length - 1)) * 1000;
             } else {
-                throw new UnhandledValueException("Unhandled type of check after interval, use 'h' for hours or 'm' for minutes or 's' for seconds.")
+                throw new UnhandledValueError("Unhandled type of check after interval, use 'h' for hours or 'm' for minutes or 's' for seconds.")
             }
         } else {
             return 0;

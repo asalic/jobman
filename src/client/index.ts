@@ -7,12 +7,12 @@ import { marked } from "marked";
 import TerminalRenderer from "marked-terminal";
 
 import DisplayService from "./service/DisplayService.js";
-import ParameterException from './model/exception/ParameterException.js';
-import { Settings } from './model/Settings.js';
+import ParameterException from '../common/model/exception/ParameterException.js';
 import SettingsManager from './service/SettingsManager.js';
-import KubeManagerProps from './model/args/KubeManagerProps.js';
-import Util from './Util.js';
+import type KubeManagerProps from '../common/model/args/KubeManagerProps.js';
+import Util from '../common/Util.js';
 import VersionService from './service/VersionService.js';
+import type { SettingsClient } from './model/SettingsClient.js';
 
 const ARGS_PARSING_ERROR_MSG = "Error parsing the arguments, please check the help by passing -h/--help as first arg of the application.";
 
@@ -153,7 +153,7 @@ export class Main {
     }
 
     protected execCmd(cmd: Cmd, sp: string | null, payload: KubeManagerProps): void { 
-        const s: Settings = new SettingsManager(sp).settings;
+        const s: SettingsClient = new SettingsManager(sp).settings;
         // Check for new version
         new VersionService(s.newVersion)
             .check()
@@ -161,7 +161,8 @@ export class Main {
             .catch(errMesage => console.error(errMesage))
             // Execute the rest of the program independently of what is return by the new version checker
             .finally(() => {
-                const ds: DisplayService = new DisplayService(s);
+                const apiToken = this.getApiToken(s.apiTokenEnvName);
+                const ds: DisplayService = new DisplayService(s, apiToken);
                 switch (cmd) {
                     case Cmd.Queue: ds.queue(); break;
                     case Cmd.Images: ds.images(); break;
@@ -196,7 +197,16 @@ export class Main {
           });
         console.log(marked(fs.readFileSync(path.join(path.dirname(Util.getDirName()), Main.EXAMPLES_FILE), {encoding: "ascii", flag: "r" })));
     }
-    
+ 
+    protected getApiToken(apiTokenEnvName: string) {
+        const apiToken: string | undefined = process.env[apiTokenEnvName];
+        if (apiToken) {
+            return apiToken;
+        } else {
+            throw new Error(`Please define an env variable called ${apiTokenEnvName} that holds the API token for the application.`);
+        }
+    }
+
     public getV(): string {
         return `jobman version '${process.env["npm_package_version"]}'`;
     }

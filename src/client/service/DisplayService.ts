@@ -1,19 +1,19 @@
 import { marked } from "marked";
-import TerminalRenderer from "marked-terminal";
 import util  from 'node:util';
-import ImageDetails from "../model/ImageDetails.js";
-import JobInfo from "../model/JobInfo.js";
 import { Table } from "console-table-printer";
-
-import { KubeOpReturn, KubeOpReturnStatus } from "../model/KubeOpReturn.js";
-import { KubeResourcesFlavor, Settings } from "../model/Settings.js";
-import SubmitProps from "../model/args/SubmitProps.js";
-import KubeManager from "./KubeManager.js";
-import DetailsProps from "../model/args/DetailsProps.js";
-import LogProps from "../model/args/LogProps.js";
-import DeleteProps from "../model/args/DeleteProps.js";
-import ImageDetailsProps from "../model/args/ImageDetailsProps.js";
-import QueueResult from "../model/QueueResult.js";
+import RestService from "./RestService.js";
+import type { SettingsClient } from "../model/SettingsClient.js";
+import QueueResult from "../../common/model/QueueResult.js";
+import { KubeOpReturn, KubeOpReturnStatus } from "../../common/model/KubeOpReturn.js";
+import type ImageDetails from "../../common/model/ImageDetails.js";
+import type ImageDetailsProps from "../../common/model/args/ImageDetailsProps.js";
+import type SubmitProps from "../../common/model/args/SubmitProps.js";
+import type DetailsProps from "../../common/model/args/DetailsProps.js";
+import type LogProps from "../../common/model/args/LogProps.js";
+import type DeleteProps from "../../common/model/args/DeleteProps.js";
+import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
+import JobInfo from "../../common/model/JobInfo.js";
+import TerminalRenderer from "marked-terminal";
 
 type SimpleMsgCallbFunction = (...args: any[]) => void;
 
@@ -30,7 +30,7 @@ export default class DisplayService {
      */
     public static TABLE_COL_MARGIN = 8;
 
-    protected km: KubeManager;
+    protected km: RestService;
 
     protected options: Intl.DateTimeFormatOptions = {
         year: 'numeric', month: 'numeric', day: 'numeric',
@@ -39,8 +39,8 @@ export default class DisplayService {
         timeZoneName: 'short'
       };
 
-    constructor(settings: Settings) {
-        this.km = new KubeManager(settings);
+    constructor(settings: SettingsClient, apiToken: string) {
+        this.km = new RestService(settings, apiToken);
         util.inspect.defaultOptions.maxArrayLength = null;
     }
 
@@ -123,6 +123,8 @@ export default class DisplayService {
     }
 
     public imageDetails(props: ImageDetailsProps): void {
+        //marked.use(markedTerminal());
+
         marked.setOptions({
             // Define custom renderer
             renderer: new TerminalRenderer()
@@ -141,12 +143,17 @@ export default class DisplayService {
     
 
     public list(): void {
-        marked.setOptions({
-            renderer: new TerminalRenderer({
-              width: this.getTerminalNoCols(),
-              reflowText: true
-            })
-          });
+        // marked.use(markedTerminal({
+        //     width: this.getTerminalNoCols(),
+        //     reflowText: true
+        //   }));
+
+        // marked.setOptions({
+        //     renderer: new TerminalRenderer({
+        //       width: this.getTerminalNoCols(),
+        //       reflowText: true
+        //     })
+        //   });
         this.km.list()
             .then(r => this.simpleMsg(r, 
                 () => {
@@ -211,58 +218,59 @@ export default class DisplayService {
     }
 
     public resourcesFlavors(): void {
-        const r: KubeOpReturn<KubeResourcesFlavor[] | undefined> = this.km.resourcesFlavors();
-        this.simpleMsg(r, 
-        () => {
-            const enabledColumns: string[] = ["name", "CPU*", "Memory*", "GPU**", "description"];
-            const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
-            
-            const t = new Table({
-                enabledColumns,
-                columns: [
-                    {
-                    name: "name",
-                    maxLen: Math.floor(totalNoColsAvailable * 0.2),
-                    title: "Name",
-                    alignment: 'left'
-                    },
-                    {
-                    name: "description",
-                    maxLen: Math.floor(totalNoColsAvailable * 0.35),
-                    title: "Description",
-                    alignment: 'left'
-                    }
-                ],
-                computedColumns:[
-                    {
-                        name: "CPU*",
-                        maxLen: Math.floor(totalNoColsAvailable * 0.15),
-                        function: (row: KubeResourcesFlavor) => `${row.resources?.requests?.["cpu"] ?? "-"} / ${row.resources?.limits?.["cpu"] ?? "-"}`,
-                        alignment: 'center'
-                    },
-                    {
-                        name: "Memory*",
-                        maxLen: Math.floor(totalNoColsAvailable * 0.15),
-                        function: (row: KubeResourcesFlavor) => `${row.resources?.requests?.["memory"] ?? "-"} / ${row.resources?.limits?.["memory"] ?? "-"}`,
-                        alignment: 'center'
-                    },
-                    {
-                        name: "GPU**",
-                        maxLen: Math.floor(totalNoColsAvailable * 0.15),
-                        function: (row: KubeResourcesFlavor) => 
-                            `${row.resources?.requests?.["nvidia.com/gpu"] ?? "-"}`
-                            + ` / ${row.resources?.requests?.["amd.com/gpu"] ?? "-"}`
-                            + ` / ${row.resources?.requests?.["intel.com/gpu"] ?? "-"}`,
-                        alignment: 'center'
-                    }
-                ]
-            });
-            t.addRows(r.payload);
-            t.printTable();
-            console.log();
-            console.log("*First value is for request, second for limits");
-            console.log("**First value represents the total count of NVIDIA GPUS, followed by that of AMD GPUs, and, finally, Intel's");
-        });
+        this.km.resourcesFlavors()
+            .then(r => this.simpleMsg(r, 
+                () => {
+                    const enabledColumns: string[] = ["name", "CPU*", "Memory*", "GPU**", "description"];
+                    const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
+                    
+                    const t = new Table({
+                        enabledColumns,
+                        columns: [
+                            {
+                            name: "name",
+                            maxLen: Math.floor(totalNoColsAvailable * 0.2),
+                            title: "Name",
+                            alignment: 'left'
+                            },
+                            {
+                            name: "description",
+                            maxLen: Math.floor(totalNoColsAvailable * 0.35),
+                            title: "Description",
+                            alignment: 'left'
+                            }
+                        ],
+                        computedColumns:[
+                            {
+                                name: "CPU*",
+                                maxLen: Math.floor(totalNoColsAvailable * 0.15),
+                                function: (row: KubeResourcesFlavor) => `${row.resources?.requests?.["cpu"] ?? "-"} / ${row.resources?.limits?.["cpu"] ?? "-"}`,
+                                alignment: 'center'
+                            },
+                            {
+                                name: "Memory*",
+                                maxLen: Math.floor(totalNoColsAvailable * 0.15),
+                                function: (row: KubeResourcesFlavor) => `${row.resources?.requests?.["memory"] ?? "-"} / ${row.resources?.limits?.["memory"] ?? "-"}`,
+                                alignment: 'center'
+                            },
+                            {
+                                name: "GPU**",
+                                maxLen: Math.floor(totalNoColsAvailable * 0.15),
+                                function: (row: KubeResourcesFlavor) => 
+                                    `${row.resources?.requests?.["nvidia.com/gpu"] ?? "-"}`
+                                    + ` / ${row.resources?.requests?.["amd.com/gpu"] ?? "-"}`
+                                    + ` / ${row.resources?.requests?.["intel.com/gpu"] ?? "-"}`,
+                                alignment: 'center'
+                            }
+                        ]
+                    });
+                    t.addRows(r.payload);
+                    t.printTable();
+                    console.log();
+                    console.log("*First value is for request, second for limits");
+                    console.log("**First value represents the total count of NVIDIA GPUS, followed by that of AMD GPUs, and, finally, Intel's");
+                }))
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
     }
 
     protected simpleMsg(op: KubeOpReturn<any>, displayFunc: SimpleMsgCallbFunction | undefined = undefined): void {

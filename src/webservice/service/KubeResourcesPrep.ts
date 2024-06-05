@@ -1,6 +1,7 @@
-import { Settings, Resources, KubeResourcesFlavor } from "../model/Settings.js";
 import fs from "node:fs";
 import KubeResourceException from "../model/exception/KubeResourceException.js";
+import type { Resources, SettingsWebService } from "../model/SettingsWebService.js";
+import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
 
 
 export default class KubeResourcesPrep {
@@ -32,7 +33,7 @@ export default class KubeResourcesPrep {
         }
     }
 
-    public static getKubeResources(settings: Settings, cmd?: string): KubeResourcesFlavor {
+    public static getKubeResources(settings: SettingsWebService, cmd?: string): KubeResourcesFlavor {
         let tmp: KubeResourcesFlavor | undefined = undefined;
         if (cmd) {
             const json: object = this.toJsonString(cmd); 

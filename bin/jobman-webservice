@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+SCRIPT_DIR=$( cd "$(dirname "$0")" && pwd | xargs dirname )
+if [[ -L "$0" ]]; then
+    SCRIPT_DIR=$(dirname "$(readlink -f "$0")" | xargs dirname)
+fi
+export NPM_CONFIG_UPDATE_NOTIFIER=false
+export NODE_NO_WARNINGS=1
+npm config set loglevel warn
+JOBMAN_EXEC_DIR=`pwd` NPM_CONFIG_UPDATE_NOTIFIER=false NODE_NO_WARNINGS=1 npm run --silent --no-update-notifier --prefix $SCRIPT_DIR prod-webservice -- "$@"

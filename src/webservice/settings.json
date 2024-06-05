@@ -24,18 +24,23 @@
             "predefined": []
         }
     },
-    "newVersion": {
-        "repository": null,
-        "packageJsonPath": null,
-        "customMessage": null,
-        "check": "24h"
-    },
     "kubeConfig": {
         "type": "file",
         "file": "/kube_config.json"
     },
     "harbor": {
         "url": "https://harbor.chaimeleon-eu.i3m.upv.es",
-        "project": "chaimeleon-library-batch"
-    }
+        "project": "chaimeleon-library-batch",
+        "projectProtected":"chaimeleon-library-batch-protected",
+        "projectProtectedToken": ""
+    },
+    "oidc": {
+
+        "url": "",
+        "realm": "CHAIMELEON",
+        "clientId": "jobman-service",
+        "clientSecret": ""
+    },
+    "port": 9000,
+    "path": "/"
 }

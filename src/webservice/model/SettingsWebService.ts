@@ -1,9 +1,30 @@
 
-// export interface KubeResourcesReqLim {
-//     memory?: string;
-//     cpu?: string;
-//     [key: string]: string;
-// }
+export enum KubeConfigType {
+    default = "default", 
+    cluster = "cluster",
+    file = "file"
+}
+
+
+export interface HarborConfig {
+    url: string;
+    project: string;
+    projectProtected: string;
+    projectProtectedToken: string;
+
+}
+
+export interface JobsQueue {
+    namespace: string;
+    configmap: string;
+    gpuResources: string[];
+}
+
+export interface KubeConfigLocal {
+
+    type: KubeConfigType;
+    file?: string | null;
+}
 
 export interface KubeResourcesFlavor {
     name: string;
@@ -17,12 +38,6 @@ export interface KubeResourcesFlavor {
         }
     };
 
-}
-
-export enum KubeConfigType {
-    default = "default", 
-    cluster = "cluster",
-    file = "file"
 }
 
 export enum AnnotationType {
@@ -77,42 +92,23 @@ export interface Job {
     resources: Resources;
 }
 
-export interface KubeConfigLocal {
-
-    type: KubeConfigType;
-    file?: string | null;
-}
-
-export interface HarborConfig {
+export interface OidcSettings {
     url: string;
-    project: string;
-
+    realm: string;
+    clientId: string;
+    clientSecret: string;
 }
 
-export interface JobsQueue {
-    namespace: string;
-    configmap: string;
-    gpuResources: string[];
-}
 
-export interface NewVersion {
-    repository?: string | null;
-    packageJsonPath?: string | null;
-    customMessage?: string | null;
-    check?: string | null;
-}
-
-export interface Settings {
+export interface SettingsWebService {
     sharedNamespace: string;
     sharedConfigmap: string;
     jobsQueue: JobsQueue;
-    job: Job;
-    /**
-     * Path to a new version. Can be ommited, or left null/blank to disbale the check
-     * It supports:
-     * - a local full path to a tar.gz archive with the jobman distribution 
-     */
-    newVersion?: NewVersion | null;
-    kubeConfig: KubeConfigLocal;
     harbor: HarborConfig;
+    kubeConfig: KubeConfigLocal;   
+    job: Job;
+    oidc: OidcSettings;
+    port: string;
+    path: string;
+
 }
