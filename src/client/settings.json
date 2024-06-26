@@ -6,5 +6,5 @@
         "check": "24h"
     },
     "webServiceUrl": "",
-    "apiTokenEnvName": "JOBMAN_API_TOKEN"
+    "apiTokenEnvName": "JOBMAN_SERVICE_API_TOKEN"
 }

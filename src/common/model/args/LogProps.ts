@@ -1,6 +1,5 @@
-import type KubeManagerProps from "./KubeManagerProps.js";
 
-export default interface LogProps extends KubeManagerProps {
+export default interface LogProps {
 
-    jobName?: string;
+    jobName: string;
 }

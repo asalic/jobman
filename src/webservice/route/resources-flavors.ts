@@ -5,16 +5,16 @@ import type { Request } from 'express';
 import type { Response } from 'express';
 import type { NextFunction } from 'express';
 import commonRequest from './common.js';
-import type QueueResultDisplay from '../../common/model/QueueResultDisplay.js';
+import type { KubeResourcesFlavor } from '../../common/model/Settings.js';
 
-const queueRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
+const resourcesFlavorsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
     let routerObj = express.Router();
     routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        commonRequest<QueueResultDisplay | null>(req, res, next, oidcAuth, km.queue.bind(km));
+        commonRequest<KubeResourcesFlavor[] | null>(req, res, next, oidcAuth, km.resourcesFlavors.bind(km));
     });
 
     return routerObj;
   
 }
 
-export default queueRouter;
+export default resourcesFlavorsRouter;

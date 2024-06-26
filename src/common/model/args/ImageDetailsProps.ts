@@ -1,6 +1,4 @@
-import type KubeManagerProps from "./KubeManagerProps.js";
 
-
-export default interface ImageDetailsProps extends  KubeManagerProps {
-    image?: string;
+export default interface ImageDetailsProps {
+    image: string;
 }

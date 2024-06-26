@@ -1,7 +1,7 @@
-import { EJobStatus } from "./IJobInfo.js";
-import type { IJobInfo } from "./IJobInfo.js";
+import AbstractDto from "./AbstractDto.js";
+import type EJobStatus from "./EJobStatus.js";
 
-export default class JobInfo implements IJobInfo {
+export default class JobInfo extends AbstractDto {
     
     name: string;
     uid?: string | undefined;
@@ -9,5 +9,9 @@ export default class JobInfo implements IJobInfo {
     dateLaunched?: Date | undefined;
     position: number;
     flavor: string;
+
+    public static override from(obj: any) {
+        return Object.assign(new JobInfo(), obj);
+    }
     
 }

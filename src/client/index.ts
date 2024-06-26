@@ -9,17 +9,10 @@ import TerminalRenderer from "marked-terminal";
 import DisplayService from "./service/DisplayService.js";
 import ParameterException from '../common/model/exception/ParameterException.js';
 import SettingsManager from './service/SettingsManager.js';
-import type KubeManagerProps from '../common/model/args/KubeManagerProps.js';
 import Util from '../common/Util.js';
 import VersionService from './service/VersionService.js';
 import type { SettingsClient } from './model/SettingsClient.js';
-
 const ARGS_PARSING_ERROR_MSG = "Error parsing the arguments, please check the help by passing -h/--help as first arg of the application.";
-
-export enum Cmd {
-    Queue, Images, ImageDetails, Submit, List, Details, Log, Delete, ResourcesFlavors
-}
-
 
 export class Main {
 
@@ -58,7 +51,7 @@ export class Main {
                     const cmdArgTmp: string | undefined = argsTmp[2];
                     const settingsPath:string | undefined = argsTmp[1];
                     if (cmdArgTmp && settingsPath) {
-                        this.parseCmdArgs(cmdArgTmp, settingsPath, argsTmp.slice(3, argsTmp.length));
+                        this.checkNewV(cmdArgTmp, settingsPath, argsTmp.slice(3, argsTmp.length));
                     } else {
                         console.error(`Undefined settings path '${settingsPath}' and/or command '${cmdArgTmp}'`);
                         return 1;
@@ -68,14 +61,30 @@ export class Main {
                     return 1;
                 }
                 break;    
-            default: this.parseCmdArgs(cmdArg, null, argsTmp.slice(1, argsTmp.length)); break;
+            default: this.checkNewV(cmdArg, null, argsTmp.slice(1, argsTmp.length)); break;
         }
         return 0;
     }
 
-    protected parseCmdArgs(cmdArg: string, sp: string | null, cmdArgs: string[]): void {
+    protected checkNewV(cmdArg: string, sp: string | null, cmdArgs: string[]) { 
+        const s: SettingsClient = new SettingsManager(sp).settings;
+        // Check for new version
+        new VersionService(s.newVersion)
+            .check()
+            .then(msg => msg ? console.log(msg) : () => {})
+            .catch(errMesage => console.error(errMesage))
+            // Execute the rest of the program independently of what is return by the new version checker
+            .finally(() => {
+                this.parseCmdArgs(cmdArg, s, cmdArgs);
+            });
+
+    }
+
+    protected parseCmdArgs(cmdArg: string, sp: SettingsClient, cmdArgs: string[]): void {
+        const apiToken = this.getApiToken(sp.apiTokenEnvName);
+        const ds: DisplayService = new DisplayService(sp, apiToken);
         switch (cmdArg) {
-            case "queue": this.execCmd(Cmd.Queue, sp, {}); break;
+            case "queue": ds.queue(); break;
             case "submit": { 
                 let cmdPos = cmdArgs.indexOf("--");
                 cmdPos = cmdPos === -1 ? cmdArgs.length : cmdPos;
@@ -91,7 +100,8 @@ export class Main {
                             annotations: {type: "string", multiple: false, short: "a"}
                         }
                     });
-                this.execCmd(Cmd.Submit, sp, {
+                
+                ds.submit({
                         jobName: values["job-name"], image: values.image, 
                         resources: values["resources-flavor"],
                         commandArgs: cmdArgs.slice(cmdPos + 1, cmdArgs.length),
@@ -104,20 +114,28 @@ export class Main {
                 // }
                 break;
             }
-            case "list": this.execCmd(Cmd.List, sp, {}); break;
-            case "images":  this.execCmd(Cmd.Images, sp, {}); break;
+            case "list": ds.list(); break;
+            case "images":  ds.images(); break;
             case "image-details": {
                     const { values: dv } = parseArgs({ args: cmdArgs, options: {
                         image: { type: "string", short: "i" }
                     }});
-                    this.execCmd(Cmd.ImageDetails, sp, { image: dv["image"] }); 
+                    if (dv["image"]) {
+                        ds.imageDetails({ image: dv["image"] }); 
+                    } else {
+                        throw new ParameterException(`Please specify the image name for the '${cmdArg}' command using the flag '-i' followed by the name of the image.`);
+                    }
                 break;
             }
             case "details": {
                     const { values: dv } = parseArgs({ args: cmdArgs, options: {
                         "job-name": { type: "string", short: "j" }
                     }});
-                    this.execCmd(Cmd.Details, sp, { jobName: dv["job-name"] }); 
+                    if (dv["job-name"]) {
+                        ds.details({ jobName: dv["job-name"] });
+                    } else {
+                        throw new ParameterException(`Please specify the job name for the '${cmdArg}' command using the flag '-j' followed by the name of the job.`);
+                    }
                 break;
             }
             case "log": throw new ParameterException(`Please use 'logs' instead of 'log', the latter has been deprecated and is not accepted anymore.`); 
@@ -126,9 +144,9 @@ export class Main {
                         "job-name": { type: "string", short: "j" }
                     }});
                     if (lv.values["job-name"])
-                        this.execCmd(Cmd.Log, sp, { jobName: lv.values["job-name"] });
+                        ds.log({ jobName: lv.values["job-name"] });
                     else
-                        throw new ParameterException(`Please specify the job name for the '${cmdArg}' command.`);
+                        throw new ParameterException(`Please specify the job name for the '${cmdArg}' command using the flag '-j' followed by the name of the job.`);
                 break;
             }
             case "delete": {
@@ -140,42 +158,16 @@ export class Main {
                         throw new ParameterException(`You cannot request to remove both all and a specific job at the same time. Use only one of the options for every invocation of jobman.`);
                     }
                     if (cv["job-name"])
-                        this.execCmd(Cmd.Delete, sp, { jobName: cv["job-name"] });
+                        ds.delete({ jobName: cv["job-name"] });
                     else if (cv.all) {
-                        this.execCmd(Cmd.Delete, sp, { all: true });
+                        ds.delete({ all: true });
                     } else
                         throw new ParameterException(`Please specify the job name for the '${cmdArg}' command, or the "--all" flag (to remove all your jobs).`);
                 break;
             }
-            case "resources-flavors": this.execCmd(Cmd.ResourcesFlavors, sp, {}); break;
+            case "resources-flavors": ds.resourcesFlavors(); break;
             default: throw new ParameterException(`Unknown command '${cmdArg}'`);
         }
-    }
-
-    protected execCmd(cmd: Cmd, sp: string | null, payload: KubeManagerProps): void { 
-        const s: SettingsClient = new SettingsManager(sp).settings;
-        // Check for new version
-        new VersionService(s.newVersion)
-            .check()
-            .then(msg => msg ? console.log(msg) : () => {})
-            .catch(errMesage => console.error(errMesage))
-            // Execute the rest of the program independently of what is return by the new version checker
-            .finally(() => {
-                const apiToken = this.getApiToken(s.apiTokenEnvName);
-                const ds: DisplayService = new DisplayService(s, apiToken);
-                switch (cmd) {
-                    case Cmd.Queue: ds.queue(); break;
-                    case Cmd.Images: ds.images(); break;
-                    case Cmd.ImageDetails: ds.imageDetails(payload); break;
-                    case Cmd.Submit: ds.submit(payload); break;
-                    case Cmd.List: ds.list(); break;
-                    case Cmd.Details: ds.details(payload); break;
-                    case Cmd.Log: ds.log(payload); break;
-                    case Cmd.Delete: ds.delete(payload); break;
-                    case Cmd.ResourcesFlavors: ds.resourcesFlavors(); break;
-                    default: console.error(ARGS_PARSING_ERROR_MSG);
-                }
-            });
     }
     
     protected printH(): void  {
@@ -203,7 +195,7 @@ export class Main {
         if (apiToken) {
             return apiToken;
         } else {
-            throw new Error(`Please define an env variable called ${apiTokenEnvName} that holds the API token for the application.`);
+            throw new Error(`Please define an env variable called '${apiTokenEnvName}' that holds the API token for the application.`);
         }
     }
 

@@ -7,6 +7,8 @@
         "gpuResources": [ ]
     },
     "job": {
+        "userNameAnnotation": "username",
+        "protectedNamespace": "jobman-exec",
         "annotations": null,
         "defaultImage": null,
         "imagePrefix": null,
@@ -28,14 +30,20 @@
         "type": "file",
         "file": "/kube_config.json"
     },
-    "harbor": {
-        "url": "https://harbor.chaimeleon-eu.i3m.upv.es",
-        "project": "chaimeleon-library-batch",
-        "projectProtected":"chaimeleon-library-batch-protected",
-        "projectProtectedToken": ""
-    },
+    "harborProjects": [
+            {
+                "name": "chaimeleon-library-batch",
+                "token": null,
+                "baseUrl": "https://harbor.chaimeleon-eu.i3m.upv.es"
+            },
+            {
+                "name": "chaimeleon-library-batch-protected",
+                "token": "",
+                "baseUrl": "https://harbor.chaimeleon-eu.i3m.upv.es"
+            }
+        ],
     "oidc": {
-
+        "apiTokenAttributeName": "",
         "url": "",
         "realm": "CHAIMELEON",
         "clientId": "jobman-service",

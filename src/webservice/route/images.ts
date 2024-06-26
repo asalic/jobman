@@ -12,7 +12,7 @@ const imagesRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
       commonRequest<ImageDetails[]>(req, res, next, oidcAuth, km.images.bind(km));
     });
   
-    routerObj.get('/:imageId', async (req: Request, res: Response, next: NextFunction) => {
+    routerObj.get('/:imageId/', async (req: Request, res: Response, next: NextFunction) => {
       commonRequest<null>(req, res, next, oidcAuth, km.imageDetails.bind(km, { image: req.params["imageId"] ?? ""}));
     });
 

@@ -1,9 +1,9 @@
 import type  { Request } from 'express'; 
-import type UserRepresentation from "../model/UserRepresentation";
-import type KeycloakApiToken from "../model/KeycloakApiToken";
-import AuthenticationError from "../error/AuthenticationError";
 import fetch, { Headers, Response } from 'node-fetch';
-import type { SettingsWebService } from '../model/SettingsWebService';
+import type UserRepresentation from "../model/UserRepresentation.js";
+import type KeycloakApiToken from "../model/KeycloakApiToken.js";
+import AuthenticationError from "../error/AuthenticationError.js";
+import type { SettingsWebService } from '../model/SettingsWebService.js';
 
 
 export default class OidcAuth {
@@ -79,9 +79,9 @@ export default class OidcAuth {
         else throw new AuthenticationError("Missing field", "Missing field 'enabled' from Keycloak authentication response", 500);
         if (resp["email"]) { result["email"] = resp["email"]; }
         else throw new AuthenticationError("Missing field", "Missing field 'email' from Keycloak authentication response", 500);
-        if (resp["attributes"]?.["external_sharing_service_api_token"]) { 
-          result["apiToken"] = JSON.parse(atob(resp["attributes"]?.["external_sharing_service_api_token"])) as KeycloakApiToken; 
-        } else throw new AuthenticationError("Missing field", "Missing attribute 'external_sharing_service_api_token' from Keycloak authentication response", 500);
+        if (resp["attributes"]?.[this.appConf.oidc.apiTokenAttributeName]) { 
+          result["apiToken"] = JSON.parse(atob(resp["attributes"]?.[this.appConf.oidc.apiTokenAttributeName])) as KeycloakApiToken; 
+        } else throw new AuthenticationError("Missing field", `Missing attribute '${this.appConf.oidc.apiTokenAttributeName}' from Keycloak authentication response`, 500);
         result["firstName"] = resp["firstName"] ?? "";
         result["lastName"] = resp["lastName"] ?? "";
         return result as UserRepresentation;
@@ -101,7 +101,8 @@ export default class OidcAuth {
       if (token) {
         const parts: string[] = token.split(" ");
         if (parts.length === 2 && parts[1] && parts[1].length > 0) {
-          return JSON.parse(atob(parts[1])) as KeycloakApiToken;
+          console.log(Buffer.from(parts[1], 'base64').toString('utf-8'));
+          return JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8')) as KeycloakApiToken;
         } else {
           return null;
         }

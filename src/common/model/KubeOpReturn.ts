@@ -1,9 +1,10 @@
+import type AbstractDto from "./AbstractDto.js";
 
 export enum KubeOpReturnStatus {
     Error, Success, Unknown, Warning
 }
 
-export class KubeOpReturn<Type> {
+export class KubeOpReturn<Type extends AbstractDto | null> {
 
     public readonly status: KubeOpReturnStatus;
     public readonly message: string | undefined;
@@ -22,6 +23,18 @@ export class KubeOpReturn<Type> {
 
     public isWarning(): boolean {
         return this.status === KubeOpReturnStatus.Warning;
+    }
+
+    static from<T extends AbstractDto | null>(obj: any): KubeOpReturn<T> {
+        return new KubeOpReturn(obj["status"], obj["message"], obj["payload"] as T);
+    }
+
+    public toString(): string {
+        return JSON.stringify({
+            status: this.status,
+            message: this.message,
+            payload: this.payload?.toString()
+        })
     }
 
 }

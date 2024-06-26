@@ -1,6 +1,5 @@
-import type KubeManagerProps from "./KubeManagerProps.js";
 
-export default interface DeleteProps extends KubeManagerProps {
+export default interface DeleteProps {
     jobName?: string;
     all?: boolean;
 }

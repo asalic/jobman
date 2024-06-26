@@ -10,8 +10,6 @@ import https from "https";
 import http from 'http';
 import fs from "node:fs";
 //import path from "node:path";
-import { EJobStatus } from '../../common/model/IJobInfo.js';
-import type { IJobInfo } from '../../common/model/IJobInfo.js';
 import JobInfo from '../../common/model/JobInfo.js';
 import ParameterException from '../../common/model/exception/ParameterException.js';
 import type SubmitProps from '../../common/model/args/SubmitProps.js';
@@ -29,11 +27,14 @@ import type ImageDetailsProps from '../../common/model/args/ImageDetailsProps.js
 import KubeResourcesPrep from './KubeResourcesPrep.js';
 import QueueResult from '../../common/model/QueueResult.js';
 import type QueueConfigMap from '../model/QueueConfigMap.js';
-import type QueueResultDisplay from '../../common/model/QueueResultDisplay.js';
+import QueueResultDisplay from '../../common/model/QueueResultDisplay.js';
 import type DeleteJobHandlerResult from '../model/DeleteJobHandlerResult.js';
 import LoggerService from './LoggerService.js';
 import { AnnotationType, KubeConfigType } from "../model/SettingsWebService.js";
-import type { KubeConfigLocal, KubeResourcesFlavor, SecurityContext, SettingsWebService } from "../model/SettingsWebService.js";
+import type { KubeConfigLocal, SecurityContext, SettingsWebService } from "../model/SettingsWebService.js";
+import type HarborProject from '../model/SettingsWebService.js';
+import type { KubeResourcesFlavor } from '../../common/model/Settings.js';
+import EJobStatus from '../../common/model/EJobStatus.js';
 
 
 export default class KubeManager {
@@ -54,7 +55,7 @@ export default class KubeManager {
         this.watch = new Watch(this.clusterConfig);
     }
 
-    public async queue():  Promise<KubeOpReturn<QueueResultDisplay | null>> {
+    public async queue(userName: string):  Promise<KubeOpReturn<QueueResultDisplay | null>> {
         try {
 
             const cm: V1ConfigMap = await this.getConfigmap(this.settings.jobsQueue.configmap, this.settings.jobsQueue.namespace);
@@ -118,7 +119,7 @@ export default class KubeManager {
         }
     }
 
-    public async submit(props: SubmitProps): Promise<KubeOpReturn<null>> {
+    public async submit(props: SubmitProps, userName: string): Promise<KubeOpReturn<null>> {
         try {
             // if (!props.image) {
             //     return new KubeOpReturn(KubeOpReturnStatus.Error,
@@ -128,21 +129,37 @@ export default class KubeManager {
             //console.log(`Parameters sent to the job's container: ${JSON.stringify(props.command)}`);
             const kr: KubeResourcesFlavor = KubeResourcesPrep.getKubeResources(this.settings, props.resources);
             const uuid: string = uuidv4()
-            const jn: string = props.jobName ?? `jobman-${uuid}`;
-            const imageNm: string | undefined = props.image ?? this.settings.job.defaultImage;
-            if (!imageNm || imageNm.length === 0) {
+            const jn: string = userName + "-" + (props.jobName ?? uuid);
+            const imageNmTag: string | undefined = props.image ?? this.settings.job.defaultImage;
+            if (!imageNmTag || imageNmTag.length === 0) {
                 throw new ParameterException(
                     `Please specify an image name and a tag either using the command line parameters or defining a default value in application's settings`); 
             }
-            const image = (this.settings.job?.imagePrefix ?? "") + imageNm;
+            let prefix = "";
+            const [imgNm, imgTag] = imageNmTag.split(":");
+            for (const hp of this.settings.harborProjects) {
+                const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(hp);
+                if (projImgs.isOk() && projImgs.payload) {
+                    const f:ImageDetails | undefined = projImgs.payload.find((id: ImageDetails) => id.name === imgNm && id.tags.find(t => t === imgTag) !== undefined);
+                    if (f) {
+                        const u = new URL(hp.baseUrl);
+                        prefix = `${u.hostname}${u.port !== "" ? ":" + u.port : ""}` + "/";
+                        break;
+                    }
+                } else {
+                    console.error(projImgs.message);
+                }    
+            }
+            const image = prefix + imageNmTag;
+            const namespace = this.getNamespace();
             console.log(`Using image '${image}'`);
             //console.log("Preparing volumes...");
             //const [volumes, volumeMounts] = await this.prepareJobVolumes();
             const job: V1Job = new V1Job();
-            const annotations = this.getAnnotations(kr, props);
+            const annotations = this.getAnnotations(kr, props, userName);
             job.metadata = {
                 name: jn,
-                namespace: this.getNamespace(),
+                namespace,
                 ...annotations && {annotations}
             }
             job.kind = "Job";
@@ -187,7 +204,7 @@ export default class KubeManager {
                 return new KubeOpReturn(KubeOpReturnStatus.Success, "\n" + JSON.stringify(job, null, 2), null);
 
             } else {
-                const r = await this.k8sApi.createNamespacedJob(this.getNamespace(), job);
+                const r = await this.k8sApi.createNamespacedJob(namespace, job);
                 return new KubeOpReturn(this.getStatusKubeOp(r.response.statusCode), 
                     `Job named '${jn}' created successfully by user '${this.getUsername()}'`, null);
 
@@ -199,9 +216,9 @@ export default class KubeManager {
         }
     }
 
-    public async list(): Promise<KubeOpReturn<IJobInfo[] | null>> {
+    public async list(userName: string): Promise<KubeOpReturn<JobInfo[] | null>> {
         try {
-            const r: KubeOpReturn<V1Job[]> = (await this.getJobsList(this.getNamespace()));
+            const r: KubeOpReturn<V1Job[]> = (await this.getJobsList(this.getNamespace(), userName));
             // const jobsQueue: V1ConfigMap = await this.getConfigmap(
             //     this.settings.jobsQueue.configmap, this.settings.jobsQueue.namespace);
             if (r.payload) {
@@ -211,7 +228,7 @@ export default class KubeManager {
                     if (jn) {
                         res.push({ name: jn,
                             uid: e.metadata?.uid,
-                            status: await this.getStatusJob(jn, e.status),
+                            status: await this.getStatusJob(jn, e.status, userName),
                             dateLaunched: e.metadata?.creationTimestamp,
                             position: 0,//jobsQueue?.data?.["jobs"]?.find(j => j.name === jn && j.user === this.getUsername())?.
                             flavor: e.metadata?.annotations?.["chaimeleon.eu/jobResourcesFlavor"] ?? "-"
@@ -229,60 +246,72 @@ export default class KubeManager {
         }
     }
 
-    public async imageDetails(props: ImageDetailsProps): Promise<KubeOpReturn<string | null>> {
+    public async imageDetails(props: ImageDetailsProps, userName: string): Promise<KubeOpReturn<string | null>> {
         if (!props.image) {
             return new KubeOpReturn(KubeOpReturnStatus.Error, "Please specify an image name", null);
         }
-        const reposUrl = `${this.settings.harbor.url}/api/v2.0/projects/${this.settings.harbor.project}/repositories`;
-        console.log(`Getting repos from ${reposUrl}`);
-        const agent = new https.Agent({
-            rejectUnauthorized: false,
-          });
-        const response: Response = await this.fetchCustom(reposUrl, {agent});
-        if (response.ok) {
-            const prjRepos: HarborRepository[] = await response.json() as HarborRepository[];
-            for (const repo of prjRepos) {
-                // Get repo name, remove project name 
-                const name: string = repo.name.substring(repo.name.indexOf("/") + 1, repo.name.length);
-                if (name === props.image) {
-                    return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, repo.description);
+        for (const hp of this.settings.harborProjects) {        
+            const reposUrl = `${hp.baseUrl}/api/v2.0/projects/${hp.name}/repositories`;
+            //console.log(`Getting repos from ${reposUrl}`);
+            const agent = new https.Agent({
+                rejectUnauthorized: false,
+            });
+            const response: Response = await this.fetchCustom(reposUrl, {
+                agent,
+                ...hp.token && {headers: [["authorization", `Basic ${hp.token}`]]}
+            });
+            if (response.ok) {
+                const prjRepos: HarborRepository[] = await response.json() as HarborRepository[];
+                for (const repo of prjRepos) {
+                    // Get repo name, remove project name 
+                    const name: string = repo.name.substring(repo.name.indexOf("/") + 1, repo.name.length);
+                    if (name === props.image) {
+                        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, repo.description);
+                    }
                 }
+            } else {
+                console.error(`Unable to load repositories from '${reposUrl}'`);
             }
-        } else {
-            console.error(`Unable to load repositories from '${reposUrl}'`);
         }
-        return new KubeOpReturn(KubeOpReturnStatus.Error, response.statusText, null);
+        return new KubeOpReturn(KubeOpReturnStatus.Error, `No image with name '${props.image}' found.`, null);
     }
 
-    public async images(): Promise<KubeOpReturn<ImageDetails[]>> {
+    public async images(userName: string): Promise<KubeOpReturn<ImageDetails[]>> {
         const result: ImageDetails[] = [];
-        for (const [p, t] of [[this.settings.harbor.project, null], [this.settings.harbor.projectProtected, this.settings.harbor.projectProtectedToken]]) {
-            if (p) {
-                const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(p, t);
-                if (projImgs.isOk() && projImgs.payload) {
-                    result.push(...projImgs.payload);
-                } else {
-                    console.error(projImgs.message);
-                }
-            }            
+        for (const hp of this.settings.harborProjects) {
+            const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(hp);
+            if (projImgs.isOk() && projImgs.payload) {
+                result.push(...projImgs.payload);
+            } else {
+                console.error(projImgs.message);
+            }    
         }
         return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, result);
     }
 
-    public async details(props: DetailsProps): Promise<KubeOpReturn<V1Job | null>> {
+    public async details(props: DetailsProps, userName: string): Promise<KubeOpReturn<V1Job | null>> {
         if (props.jobName) {
             const r: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
-            return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, r);
+            if (r) {
+                if (r.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName) {
+                    return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, r);
+
+                } else {
+                    return  new KubeOpReturn(KubeOpReturnStatus.Error, `Cannot get details for job '${props.jobName}'`, null);
+                }
+            } else {
+                return  new KubeOpReturn(KubeOpReturnStatus.Error, `Cannot get details for job '${props.jobName}'`, null);
+            }
         } else {
             return new KubeOpReturn(KubeOpReturnStatus.Error, "Job name required", null);
         }
     }
 
-    public async log(props: LogProps): 
+    public async log(props: LogProps, userName: string): 
             Promise<KubeOpReturn<string | null>>{
         try {
             if (props.jobName) {
-                const podName: string | undefined =  (await this.getJobPodInfo(props.jobName))?.metadata?.name;
+                const podName: string | undefined =  (await this.getJobPodInfo(props.jobName, userName))?.metadata?.name;
 
                 //console.dir((await this.k8sApi.readNamespacedJobStatus(props.jobName, this.getNamespace())).body.status);
                 if (podName) {
@@ -302,7 +331,7 @@ export default class KubeManager {
         }
     }
 
-    public async delete(props: DeleteProps): Promise<KubeOpReturn<null>> {
+    public async delete(props: DeleteProps, userName: string): Promise<KubeOpReturn<null>> {
         try {
             const uname: string | undefined = this.clusterConfig.getCurrentUser()?.name;
             if (!uname) 
@@ -311,7 +340,7 @@ export default class KubeManager {
                 const r: DeleteJobHandlerResult = await this.deleteJobHandler(this.getNamespace(), props.jobName);
                 return new KubeOpReturn(r.status,  r.message, null);
             } else if (props.all) {
-                const  r: KubeOpReturn<V1Job[]> = await this.getJobsList(this.getNamespace());
+                const  r: KubeOpReturn<V1Job[]> = await this.getJobsList(this.getNamespace(), userName);
                 if (r.payload && r.payload.length > 0) {
                     const idsStatus: Map<KubeOpReturnStatus, string[]> = new Map<KubeOpReturnStatus, string[]>()
                     for (const j of r.payload) {
@@ -349,18 +378,18 @@ export default class KubeManager {
         }
     }
 
-    public resourcesFlavors(): KubeOpReturn<KubeResourcesFlavor[] | undefined> {
+    public resourcesFlavors(userName: string): KubeOpReturn<KubeResourcesFlavor[] | null> {
         if (this.settings.job.resources.predefined && this.settings.job.resources.predefined.length > 0) {
             return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, this.settings.job.resources.predefined);
         } else {
-            return new KubeOpReturn(KubeOpReturnStatus.Warning, "No predefined flavors found in the application's settings files.", undefined);
+            return new KubeOpReturn(KubeOpReturnStatus.Warning, "No predefined flavors found in the application's settings files.", null);
         }
 
     }
 
-    protected async getHarborImages(project: string, token?: string | null | undefined): Promise<KubeOpReturn<ImageDetails[]>> {
-        const projsUrl = `${this.settings.harbor.url}/api/v2.0/projects`
-        const reposUrl = `${projsUrl}/${project}/repositories`;
+    protected async getHarborImages(hp: HarborProject): Promise<KubeOpReturn<ImageDetails[]>> {
+        const projsUrl = `${hp.baseUrl}/api/v2.0/projects`
+        const reposUrl = `${projsUrl}/${hp.name}/repositories`;
         console.log(`Getting repos from ${reposUrl}`);
         const agent = new https.Agent({
             rejectUnauthorized: false,
@@ -375,7 +404,7 @@ export default class KubeManager {
             const response: Response = await this.fetchCustom(`${reposUrl}?page=${pageNum}&page_size=${pageSize}`, 
                 {
                     agent,
-                    ...token && {headers: ["Autorization", `Bearer ${token}`]}
+                    ...hp.token && {headers: [["authorization", `Basic ${hp.token}`]]}
                 });
             if (response.ok) {
                 const prjRepos: HarborRepository[] = await response.json() as HarborRepository[];
@@ -391,7 +420,7 @@ export default class KubeManager {
                     const rArtifacts: Response = await this.fetchCustom(`${artsUrl}?page_size=${repo.artifact_count}`, 
                         {
                             agent,
-                            ...token && {headers: ["Autorization", `Bearer ${token}`]}
+                            ...hp.token && {headers: [["Autorization", `Bearer ${hp.token}`]]}
                         });
                     if (rArtifacts.ok) {
                         const arts: HarborRespositoryArtifact[] = await rArtifacts.json() as HarborRespositoryArtifact[];
@@ -418,12 +447,13 @@ export default class KubeManager {
 
     }
 
-    protected getAnnotations(kr: KubeResourcesFlavor, props: SubmitProps): { [key: string]: string; } | null {
+    protected getAnnotations(kr: KubeResourcesFlavor, props: SubmitProps, userName: string): { [key: string]: string; } | null {
 
         const r = Object.create(null);
         if (this.settings.job.resources.label) {
             r[this.settings.job.resources.label] = kr.name;
         }
+        r[this.settings.job.userNameAnnotation] = userName;
         if (this.settings.job.annotations) {
             for (const a of this.settings.job.annotations) {
                 switch (a.valueType) {
@@ -562,16 +592,20 @@ export default class KubeManager {
         return {monitors, user, secretRef: {name: "ceph-auth"}, readOnly, path};
     }
     
-    protected async getJobPodInfo(jobName: string): Promise<V1Pod | undefined> {
+    protected async getJobPodInfo(jobName: string, userName: string): Promise<V1Pod | undefined> {
         const r: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
-        const cUid: string | undefined = r?.metadata?.labels?.["controller-uid"];
-        if (cUid) {
-            const podLblSel: string = "controller-uid=" + cUid;
-            const pods: V1PodList = (await this.k8sCoreApi.listNamespacedPod(this.getNamespace(), 
-                undefined, undefined, undefined, undefined, podLblSel)).body;
-            return pods.items[0];
+        if (r.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName) {
+            const cUid: string | undefined = r?.metadata?.labels?.["controller-uid"];
+            if (cUid) {
+                const podLblSel: string = "controller-uid=" + cUid;
+                const pods: V1PodList = (await this.k8sCoreApi.listNamespacedPod(this.getNamespace(), 
+                    undefined, undefined, undefined, undefined, podLblSel)).body;
+                return pods.items[0];
+            } else {
+                throw new KubeException(`Unable to determine controller UID for job '${jobName}'.`);
+            }
         } else {
-            throw new KubeException(`Unable to determine controller UID for job '${jobName}'.`);
+            throw new KubeException(`No job named '${jobName}' found for the user named ${userName}.`);
         }
     }
 
@@ -587,16 +621,20 @@ export default class KubeManager {
         }
     }
 
-    protected async getJobsList(namespace: string): Promise<KubeOpReturn<V1Job[]>> {
-        const res =  await this.k8sApi.listNamespacedJob(namespace);
-        return new KubeOpReturn(this.getStatusKubeOp(res.response.statusCode), res.response.statusMessage, res.body.items);
+    protected async getJobsList(namespace: string, userName: string): Promise<KubeOpReturn<V1Job[]>> {
+        const res =  (await this.k8sApi.listNamespacedJob(namespace))//, undefined, undefined, undefined, 
+
+        //     `metadata.annotations.${this.settings.job.userNameAnnotation}=${userName}`
+        // );
+        const r: V1Job[] = res.body.items.filter((j:V1Job) => j.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName);
+        return new KubeOpReturn(this.getStatusKubeOp(res.response.statusCode), res.response.statusMessage, r);
     }
 
-    protected async getStatusJob(jobName: string, stat: V1JobStatus | undefined): Promise<EJobStatus>  {
+    protected async getStatusJob(jobName: string, stat: V1JobStatus | undefined, userName: string): Promise<EJobStatus>  {
         if (stat) {
             if (stat.failed === undefined && stat.succeeded === undefined) {
                 // we have to check what the pod is doing
-                const podPhase: string | undefined =  (await this.getJobPodInfo(jobName))?.status?.phase?.toLowerCase();
+                const podPhase: string | undefined =  (await this.getJobPodInfo(jobName, userName))?.status?.phase?.toLowerCase();
                 switch (podPhase) {
                     case "pending": return EJobStatus.Pending;
                     case "running": return EJobStatus.Running;
@@ -660,11 +698,12 @@ export default class KubeManager {
     }
 
     protected getNamespace(): string {
-        const nm: string | undefined = this.clusterConfig.getContexts().filter(c => c.name === this.clusterConfig.getCurrentContext())?.[0]?.namespace;
-        if (!nm)
-            throw new KubeException("Unable to determine namespace");
-        else   
-            return nm;
+        return this.settings.job.protectedNamespace;
+        // const nm: string | undefined = this.clusterConfig.getContexts().filter(c => c.name === this.clusterConfig.getCurrentContext())?.[0]?.namespace;
+        // if (!nm)
+        //     throw new KubeException("Unable to determine namespace");
+        // else   
+        //     return nm;
     }
 
     protected fetchCustom(url: string, init?: RequestInit): Promise<Response> {

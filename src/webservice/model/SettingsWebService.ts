@@ -1,17 +1,9 @@
+import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
 
 export enum KubeConfigType {
     default = "default", 
     cluster = "cluster",
     file = "file"
-}
-
-
-export interface HarborConfig {
-    url: string;
-    project: string;
-    projectProtected: string;
-    projectProtectedToken: string;
-
 }
 
 export interface JobsQueue {
@@ -24,20 +16,6 @@ export interface KubeConfigLocal {
 
     type: KubeConfigType;
     file?: string | null;
-}
-
-export interface KubeResourcesFlavor {
-    name: string;
-    description?: string | null;
-    resources: {
-        requests?: {
-            [key: string]: string
-        },
-        limits?: {
-            [key: string]: string
-        }
-    };
-
 }
 
 export enum AnnotationType {
@@ -80,23 +58,31 @@ export interface Annotation {
 }
 
 export interface Job {
+    userNameAnnotation: string;
     annotations?: Annotation[] | null;
     //datasetsList?: string | null;
     defaultImage?: string;
-    imagePrefix?: string | null;
     userConfigmap: string | null | undefined,
     priorityClassName?: string | null;
     securityContext?: SecurityContext | null;
     //mountPoints?: MountPoints;
     //affinity: Affinity;
     resources: Resources;
+    protectedNamespace: string;
 }
 
 export interface OidcSettings {
+    apiTokenAttributeName: string;
     url: string;
     realm: string;
     clientId: string;
     clientSecret: string;
+}
+
+export default interface HarborProject {
+    baseUrl: string;
+    name: string;
+    token?: string | null;
 }
 
 
@@ -104,7 +90,8 @@ export interface SettingsWebService {
     sharedNamespace: string;
     sharedConfigmap: string;
     jobsQueue: JobsQueue;
-    harbor: HarborConfig;
+    harborProjects: HarborProject[];
+    projects: HarborProject[];
     kubeConfig: KubeConfigLocal;   
     job: Job;
     oidc: OidcSettings;

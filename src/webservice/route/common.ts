@@ -1,19 +1,24 @@
 import type { Response, NextFunction, Request } from 'express';
-import type UserRepresentation from '../model/UserRepresentation';
-import type KeycloakApiToken from '../model/KeycloakApiToken';
-import AuthenticationError from '../error/AuthenticationError';
-import { KubeOpReturn, KubeOpReturnStatus } from '../../common/model/KubeOpReturn';
-import type OidcAuth from '../service/OidcAuth';
+import type UserRepresentation from '../model/UserRepresentation.js';
+import type KeycloakApiToken from '../model/KeycloakApiToken.js';
+import AuthenticationError from '../error/AuthenticationError.js';
+import { KubeOpReturn, KubeOpReturnStatus } from '../../common/model/KubeOpReturn.js';
+import type OidcAuth from '../service/OidcAuth.js';
+import type AbstractDto from '../../common/model/AbstractDto.js';
 
-async function commonRequest<T>(req: Request, res: Response, next: NextFunction, oidcAuth: OidcAuth, method: Function) {
+async function commonRequest<T extends AbstractDto | null>(req: Request, res: Response, next: NextFunction, oidcAuth: OidcAuth, method: Function) {
     let payload: KubeOpReturn<T | null> | null = null;
     let sc: number = 501;
     try {
       const ur: UserRepresentation = await oidcAuth.auth(req);
       const kapReq: KeycloakApiToken  | null = oidcAuth.validateApiToken(req,  ur);
       if (kapReq) {
-        payload = await method();//km[kmMethodName]();
-        sc = 200;
+        payload = (await method(ur.username)).toString();//km[kmMethodName]();
+        if (payload?.status === KubeOpReturnStatus.Error) {
+          sc = 400;
+        } else {
+          sc = 200;
+        }
       } else {
         sc = 401;
         payload = new KubeOpReturn(KubeOpReturnStatus.Error, "Invalid API token", null);

@@ -40,6 +40,7 @@ export default class DisplayService {
       };
 
     constructor(settings: SettingsClient, apiToken: string) {
+        console.log(apiToken);
         this.km = new RestService(settings, apiToken);
         util.inspect.defaultOptions.maxArrayLength = null;
     }
@@ -130,7 +131,7 @@ export default class DisplayService {
             renderer: new TerminalRenderer()
           });
         this.km.imageDetails(props)
-            .then(r => this.simpleMsg(r,  () => console.log(marked(r.payload ?? ""))))
+            .then(r => this.simpleMsg(r,  () => console.log(marked(r.payload ?? "&lt;__No description available__&gt;"))))
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
 
     }

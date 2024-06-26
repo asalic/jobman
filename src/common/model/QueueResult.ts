@@ -1,5 +1,6 @@
+import AbstractDto from "./AbstractDto.js";
 
-export default class QueueResult {
+export default class QueueResult extends AbstractDto {
     public id: string;
     public flavor: string | undefined;
     //public count: number;
@@ -11,5 +12,11 @@ export default class QueueResult {
     //public userJobsCnt: number;
     //public allJobsStats: QueueResultJobStats;
     //public userJobsStats: QueueResultJobStats;
+
+
+
+    public static override from(obj: any) {
+        return Object.assign(new QueueResult(), obj);
+    }
 
 }

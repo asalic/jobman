@@ -19,6 +19,7 @@ import imagesRouter from './route/images.js';
 import queueRouter from './route/queue.js';
 import OidcAuth from './service/OidcAuth.js';
 import KubeManager from './service/KubeManager.js';
+import resourcesFlavorsRouter from './route/resources-flavors.js';
 
 
 //console.log(process.argv);
@@ -45,10 +46,10 @@ app.use(express.urlencoded({ extended: false }));
 //app.use(BodyParser.json({ limit: appConfig.resultPostSize }));
 //app.use(BodyParser.urlencoded({ extended: true }));
 //app.use(upload.array());
-
 app.use(appConf.path + "/jobs", jobsRouter(oidcAuth, km));
 app.use(appConf.path + "/images", imagesRouter(oidcAuth, km));
 app.use(appConf.path + "/queue", queueRouter(oidcAuth, km));
+app.use(appConf.path + "/resources-flavors", resourcesFlavorsRouter(oidcAuth, km));
 // 404 handler and pass to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
     next(HttpErrors(404, new BaseError("Not found", "Path " + req.path + " not found on the server", 404)));
@@ -62,7 +63,7 @@ const errorHandler: ErrorRequestHandler = (err: any, req: Request, res: Response
     // // render the error page
     // res.status(err.status || 500);
     // res.render('error');
-    console.log('error');
+    console.error(err);
     //res.error = err;
     res.status(err.status).json(err);
 };
