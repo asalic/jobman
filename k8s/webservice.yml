@@ -1,0 +1,72 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: webservice-config
+  namespace: jobman-service
+data:
+  settings.json: "{
+
+                  }"
+
+  
+---
+    
+apiVersion: v1
+kind: Service
+metadata:
+  name: webservice
+  namespace: jobman-service
+spec:
+  ports:
+  - port: 8080
+    target: 8080
+    protocol: TCP
+    name: api
+  selector:
+    app: webservice
+  
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: webservice
+  namespace: jobman-service
+spec:
+  selector:
+    matchLabels:
+      app: webservice
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        app: webservice
+    spec:
+      replicas: 1
+      priorityClassName: core-services
+      nodeSelector:
+        chaimeleon.eu/target: core-services
+      containers:
+      - image: harbor.chaimeleon-eu.i3m.upv.es/chaimeleon-services/jobman-webservice:2.0.0-BETA
+        imagePullPolicy: Always
+        name: webservice
+        resources:
+          requests:
+            memory: "4Gi"
+            cpu: "1"
+          limits:
+            memory: "4Gi"
+            cpu: "1"
+        ports:
+        - containerPort: 8080
+          name: api
+        volumeMounts:
+        - name: webservice-configMap
+          mountPath: /opt/jobman-webservice/settings.json
+          subPath: settings.json
+      volumes:
+      - name: webservice-configMap
+        configMap:
+          name: webservice-config
