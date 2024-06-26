@@ -7,14 +7,14 @@ import type { NextFunction } from 'express';
 import commonRequest from './common.js';
 import type SubmitProps from '../../common/model/args/SubmitProps.js';
 import type { V1Job } from '@kubernetes/client-node';
-import type JobInfo from '../../common/model/JobInfo.js';
+import type JobInfoPage from '../../common/model/JobInfoPage.js';
 
 
 const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
   let routerObj = express.Router();
   
   routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<JobInfo[] | null>(req, res, next, oidcAuth, km.list.bind(km));
+    commonRequest<JobInfoPage | null>(req, res, next, oidcAuth, km.list.bind(km));
   });
 
   routerObj.post('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -35,7 +35,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
   });
 
   routerObj.get('/:jobName/logs/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<V1Job | null>(req, res, next, oidcAuth, km.log.bind(km, { jobName: req.params["jobName"] ?? ""}));
+    commonRequest<string | null>(req, res, next, oidcAuth, km.log.bind(km, { jobName: req.params["jobName"] ?? ""}));
   });
 
   return routerObj;

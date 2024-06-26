@@ -11,7 +11,8 @@ import type SubmitProps from "../../common/model/args/SubmitProps.js";
 import type DetailsProps from "../../common/model/args/DetailsProps.js";
 import type LogProps from "../../common/model/args/LogProps.js";
 import type DeleteProps from "../../common/model/args/DeleteProps.js";
-import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
+import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
+import type JobInfoPage from "../../common/model/JobInfoPage.js";
 import JobInfo from "../../common/model/JobInfo.js";
 import TerminalRenderer from "marked-terminal";
 
@@ -117,7 +118,7 @@ export default class DisplayService {
                             }
                         ]
                     });
-                    t.addRows(r.payload);
+                    t.addRows(r.payload?.imageDetails);
                     t.printTable();
                 }))
                 .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
@@ -156,7 +157,7 @@ export default class DisplayService {
         //     })
         //   });
         this.km.list()
-            .then(r => this.simpleMsg(r, 
+            .then((r: KubeOpReturn<JobInfoPage | null>) => this.simpleMsg(r, 
                 () => {
                     const enabledColumns: string[] = ["name", "status", "flavor", "Launch Date"];
                     const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
@@ -186,13 +187,13 @@ export default class DisplayService {
                             {
                                 name: "Launch Date",
                                 maxLen: Math.floor(totalNoColsAvailable * 0.30),
-                                function: (row: JobInfo) => new Intl.DateTimeFormat('en-GB', this.options)
-                                                .format(row.dateLaunched),
+                                function: (row: JobInfo) => row.dateLaunched ? new Intl.DateTimeFormat('en-GB', this.options)
+                                                .format(row.dateLaunched) : "-",
                                 alignment: 'center'
                             }
                         ]
                     });
-                    t.addRows(r.payload);
+                    t.addRows(r.payload?.jobInfos);
                     t.printTable();
                 }))
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
@@ -265,7 +266,7 @@ export default class DisplayService {
                             }
                         ]
                     });
-                    t.addRows(r.payload);
+                    t.addRows(r.payload?.kubeResourcesFlavors);
                     t.printTable();
                     console.log();
                     console.log("*First value is for request, second for limits");

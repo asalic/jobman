@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import KubeResourceException from "../model/exception/KubeResourceException.js";
 import type { Resources, SettingsWebService } from "../model/SettingsWebService.js";
-import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
+import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
 
 
 export default class KubeResourcesPrep {

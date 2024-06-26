@@ -33,8 +33,11 @@ import LoggerService from './LoggerService.js';
 import { AnnotationType, KubeConfigType } from "../model/SettingsWebService.js";
 import type { KubeConfigLocal, SecurityContext, SettingsWebService } from "../model/SettingsWebService.js";
 import type HarborProject from '../model/SettingsWebService.js';
-import type { KubeResourcesFlavor } from '../../common/model/Settings.js';
+import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
 import EJobStatus from '../../common/model/EJobStatus.js';
+import type JobInfoPage from '../../common/model/JobInfoPage.js';
+import type ImageDetailsPage from '../../common/model/ImageDetailsPage.js';
+import type KubeResourcesFlavorPage from '../../common/model/KubeResourcesFlavorPage.js';
 
 
 export default class KubeManager {
@@ -216,7 +219,7 @@ export default class KubeManager {
         }
     }
 
-    public async list(userName: string): Promise<KubeOpReturn<JobInfo[] | null>> {
+    public async list(userName: string): Promise<KubeOpReturn<JobInfoPage | null>> {
         try {
             const r: KubeOpReturn<V1Job[]> = (await this.getJobsList(this.getNamespace(), userName));
             // const jobsQueue: V1ConfigMap = await this.getConfigmap(
@@ -229,17 +232,17 @@ export default class KubeManager {
                         res.push({ name: jn,
                             uid: e.metadata?.uid,
                             status: await this.getStatusJob(jn, e.status, userName),
-                            dateLaunched: e.metadata?.creationTimestamp,
+                            dateLaunched: e.metadata?.creationTimestamp?.getTime() ?? null,
                             position: 0,//jobsQueue?.data?.["jobs"]?.find(j => j.name === jn && j.user === this.getUsername())?.
                             flavor: e.metadata?.annotations?.["chaimeleon.eu/jobResourcesFlavor"] ?? "-"
                         });
                     }
                 }
-                res.sort(function(a,b){return (b.dateLaunched?.getTime() ?? 0) 
-                        - (a.dateLaunched?.getTime() ?? 0)});
-                return new KubeOpReturn(KubeOpReturnStatus.Success, r.message, res);
+                res.sort(function(a,b){return (b.dateLaunched ?? 0) 
+                        - (a.dateLaunched ?? 0)});
+                return new KubeOpReturn(KubeOpReturnStatus.Success, r.message, { jobInfos: res });
             } else {
-                return new KubeOpReturn(KubeOpReturnStatus.Success, "Empty jobs", null);
+                return new KubeOpReturn(KubeOpReturnStatus.Success, "Empty jobs", { jobInfos: [] });
             }
         } catch (e) {
             return this.handleKubeOpsError(e);
@@ -276,17 +279,17 @@ export default class KubeManager {
         return new KubeOpReturn(KubeOpReturnStatus.Error, `No image with name '${props.image}' found.`, null);
     }
 
-    public async images(userName: string): Promise<KubeOpReturn<ImageDetails[]>> {
-        const result: ImageDetails[] = [];
+    public async images(userName: string): Promise<KubeOpReturn<ImageDetailsPage | null>> {
+        const imageDetails: ImageDetails[] = [];
         for (const hp of this.settings.harborProjects) {
             const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(hp);
             if (projImgs.isOk() && projImgs.payload) {
-                result.push(...projImgs.payload);
+                imageDetails.push(...projImgs.payload);
             } else {
                 console.error(projImgs.message);
             }    
         }
-        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, result);
+        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, { imageDetails} );
     }
 
     public async details(props: DetailsProps, userName: string): Promise<KubeOpReturn<V1Job | null>> {
@@ -378,9 +381,9 @@ export default class KubeManager {
         }
     }
 
-    public resourcesFlavors(userName: string): KubeOpReturn<KubeResourcesFlavor[] | null> {
+    public resourcesFlavors(userName: string): KubeOpReturn<KubeResourcesFlavorPage | null> {
         if (this.settings.job.resources.predefined && this.settings.job.resources.predefined.length > 0) {
-            return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, this.settings.job.resources.predefined);
+            return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, { kubeResourcesFlavors: this.settings.job.resources.predefined });
         } else {
             return new KubeOpReturn(KubeOpReturnStatus.Warning, "No predefined flavors found in the application's settings files.", null);
         }

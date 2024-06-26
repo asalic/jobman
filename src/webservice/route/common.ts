@@ -13,7 +13,7 @@ async function commonRequest<T extends AbstractDto | null>(req: Request, res: Re
       const ur: UserRepresentation = await oidcAuth.auth(req);
       const kapReq: KeycloakApiToken  | null = oidcAuth.validateApiToken(req,  ur);
       if (kapReq) {
-        payload = (await method(ur.username)).toString();//km[kmMethodName]();
+        payload = (await method(ur.username));//km[kmMethodName]();
         if (payload?.status === KubeOpReturnStatus.Error) {
           sc = 400;
         } else {

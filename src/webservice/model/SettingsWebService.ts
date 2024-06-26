@@ -1,4 +1,5 @@
-import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
+
+import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
 
 export enum KubeConfigType {
     default = "default", 

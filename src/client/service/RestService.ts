@@ -5,14 +5,14 @@ import type QueueResultDisplay from "../../common/model/QueueResultDisplay.js";
 import type SubmitProps from "../../common/model/args/SubmitProps.js";
 import type {SettingsClient} from "../model/SettingsClient.js";
 import type ImageDetailsProps from "../../common/model/args/ImageDetailsProps.js";
-import type ImageDetails from "../../common/model/ImageDetails.js";
 import type DetailsProps from "../../common/model/args/DetailsProps.js";
 import { V1Job } from "@kubernetes/client-node";
 import type LogProps from "../../common/model/args/LogProps.js";
 import type DeleteProps from "../../common/model/args/DeleteProps.js";
-import type { KubeResourcesFlavor } from "../../common/model/Settings.js";
-import type JobInfo from "../../common/model/JobInfo.js";
 import type AbstractDto from "../../common/model/AbstractDto.js";
+import type JobInfoPage from "../../common/model/JobInfoPage.js";
+import type ImageDetailsPage from "../../common/model/ImageDetailsPage.js";
+import type KubeResourcesFlavorPage from "../../common/model/KubeResourcesFlavorPage.js";
 
 export default class RestService {
 
@@ -33,16 +33,16 @@ export default class RestService {
         return this.commonCall<null>("/jobs/", "POST", props);
     }
 
-    public async list(): Promise<KubeOpReturn<JobInfo[] | null>> {
-        return this.commonCall<JobInfo[] | null>("/jobs/", "GET");
+    public async list(): Promise<KubeOpReturn<JobInfoPage | null>> {
+        return this.commonCall<JobInfoPage | null>("/jobs/", "GET");
     }
 
     public imageDetails(props: ImageDetailsProps): Promise<KubeOpReturn<string | null>> {
         return this.commonCall<string | null>(`/images/${props.image}/`, "GET");
     }
 
-    public images(): Promise<KubeOpReturn<ImageDetails[]>> {
-        return this.commonCall<ImageDetails[]>("/images/", "GET");
+    public images(): Promise<KubeOpReturn<ImageDetailsPage>> {
+        return this.commonCall<ImageDetailsPage>("/images/", "GET");
     }
 
     public details(props: DetailsProps): Promise<KubeOpReturn<V1Job | null>> {
@@ -61,8 +61,8 @@ export default class RestService {
         }
     }
 
-    public resourcesFlavors(): Promise<KubeOpReturn<KubeResourcesFlavor[] | null>> {
-        return this.commonCall<KubeResourcesFlavor[] | null>("/resources-flavors", "GET");
+    public resourcesFlavors(): Promise<KubeOpReturn<KubeResourcesFlavorPage>> {
+        return this.commonCall<KubeResourcesFlavorPage>("/resources-flavors", "GET");
     }
 
     protected commonCall<T extends AbstractDto | null>(path: string, method: string, props?: any): Promise<KubeOpReturn<T>> {
