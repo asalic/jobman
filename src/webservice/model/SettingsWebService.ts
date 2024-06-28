@@ -1,4 +1,5 @@
 
+import type Annotation from "../../common/model/Annotation.js";
 import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
 
 export enum KubeConfigType {
@@ -17,11 +18,6 @@ export interface KubeConfigLocal {
 
     type: KubeConfigType;
     file?: string | null;
-}
-
-export enum AnnotationType {
-    string = "string", 
-    env = "env"
 }
 
 export interface Affinity {
@@ -52,14 +48,9 @@ export interface SecurityContext {
     supplementalGroups?: Array<number>;
 }
 
-export interface Annotation {
-    key: string;
-    value: string;
-    valueType: AnnotationType;
-}
-
 export interface Job {
     userNameAnnotation: string;
+    annotationDatasetsList: string;
     annotations?: Annotation[] | null;
     //datasetsList?: string | null;
     defaultImage?: string;
