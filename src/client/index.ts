@@ -107,7 +107,8 @@ export class Main {
                         commandArgs: cmdArgs.slice(cmdPos + 1, cmdArgs.length),
                         command: values.command,
                         dryRun: values["dry-run"],
-                        annotations: values["annotations"]
+                        annotations: values["annotations"],
+                        datasetsList: process.env[sp.datasetsListEnvVar] ?? ""
                     });
                 // } else {
                 //     throw new ParameterException("Missing container command separator '--'. It is needed to separate jobman's args and the actual command  passed to the container.");

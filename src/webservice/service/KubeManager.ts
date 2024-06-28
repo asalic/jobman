@@ -1,5 +1,5 @@
 import { KubeConfig, BatchV1Api, V1Job, V1JobStatus, V1DeleteOptions, Watch, 
-        CoreV1Api, V1PodList, HttpError, V1Pod, V1ConfigMap, V1CephFSVolumeSource, 
+        CoreV1Api, V1PodList, HttpError, V1Pod, V1ConfigMap, 
         //V1Volume, V1VolumeMount, 
         V1PodSecurityContext, V1ResourceRequirements, V1Status } from '@kubernetes/client-node';
 import { v4 as uuidv4 }  from "uuid";
@@ -30,7 +30,7 @@ import type QueueConfigMap from '../model/QueueConfigMap.js';
 import QueueResultDisplay from '../../common/model/QueueResultDisplay.js';
 import type DeleteJobHandlerResult from '../model/DeleteJobHandlerResult.js';
 import LoggerService from './LoggerService.js';
-import { AnnotationType, KubeConfigType } from "../model/SettingsWebService.js";
+import { KubeConfigType } from "../model/SettingsWebService.js";
 import type { KubeConfigLocal, SecurityContext, SettingsWebService } from "../model/SettingsWebService.js";
 import type HarborProject from '../model/SettingsWebService.js';
 import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
@@ -38,6 +38,7 @@ import EJobStatus from '../../common/model/EJobStatus.js';
 import type JobInfoPage from '../../common/model/JobInfoPage.js';
 import type ImageDetailsPage from '../../common/model/ImageDetailsPage.js';
 import type KubeResourcesFlavorPage from '../../common/model/KubeResourcesFlavorPage.js';
+import Util from '../../common/Util.js';
 
 
 export default class KubeManager {
@@ -146,7 +147,7 @@ export default class KubeManager {
                     const f:ImageDetails | undefined = projImgs.payload.find((id: ImageDetails) => id.name === imgNm && id.tags.find(t => t === imgTag) !== undefined);
                     if (f) {
                         const u = new URL(hp.baseUrl);
-                        prefix = `${u.hostname}${u.port !== "" ? ":" + u.port : ""}` + "/";
+                        prefix = `${u.hostname}${u.port !== "" ? ":" + u.port : ""}/${hp.name}/`;
                         break;
                     }
                 } else {
@@ -167,13 +168,13 @@ export default class KubeManager {
             }
             job.kind = "Job";
             const securityContext: SecurityContext | undefined | null = this.settings.job.securityContext;
-            if (securityContext && this.settings.job.userConfigmap) {
-                const userConfigmap: V1ConfigMap = await this.getConfigmap(this.settings.job.userConfigmap);
-                const sgs: string | undefined | null = userConfigmap.data?.["ceph.gid"]
-                if (sgs) {
-                    securityContext.supplementalGroups = [Number(sgs)];
-                }
-            }
+            // if (securityContext && this.settings.job.userConfigmap) {
+            //     const userConfigmap: V1ConfigMap = await this.getConfigmap(this.settings.job.userConfigmap);
+            //     const sgs: string | undefined | null = userConfigmap.data?.["ceph.gid"]
+            //     if (sgs) {
+            //         securityContext.supplementalGroups = [Number(sgs)];
+            //     }
+            // }
             const priorityClassName: string | undefined | null = this.settings.job.priorityClassName;
             const cmdArgs: string[] | undefined = props.commandArgs ? (props.commandArgs.length === 0 ? undefined : props.commandArgs) : props.commandArgs;
             const command: string[] | undefined = props.command ? cmdArgs : undefined;
@@ -457,22 +458,11 @@ export default class KubeManager {
             r[this.settings.job.resources.label] = kr.name;
         }
         r[this.settings.job.userNameAnnotation] = userName;
-        if (this.settings.job.annotations) {
-            for (const a of this.settings.job.annotations) {
-                switch (a.valueType) {
-                    case AnnotationType.env: {
-                        if (process.env[a.value])
-                            r[a.key] = process.env[a.value]; 
-                        break;
-                    }
-                    case AnnotationType.string: r[a.key] = a.value; break;
-                    default: throw new UnhandledValueException(`Annotation type '${a.valueType}' not handled for key '${a.key}' and value '${a.value}`);
-                }
-            }
-        }
+        Object.assign(r, Util.getAnnotationsFromSettings(this.settings.job.annotations));
         if (props.annotations) {
                 Object.assign(r, JSON.parse(props.annotations));   
         }
+        r[this.settings.job.annotationDatasetsList] = props.datasetsList;
         return Object.keys(r).length > 0 ? r : null;
     } 
 
@@ -587,13 +577,13 @@ export default class KubeManager {
     //     return [undefined, undefined];
     // }
 
-    protected defJobVolume(userConfigmap: V1ConfigMap, path: string, readOnly: boolean): V1CephFSVolumeSource {
-        const monitors: string[] =  userConfigmap.data?.["ceph.monitors"]?.split(",") 
-            ?? (userConfigmap.data?.["ceph.monitor"] ? [userConfigmap.data?.["ceph.monitor"]] : null) ?? [];
-        const user: string = userConfigmap.data?.["ceph.user"] ?? "";
+    // protected defJobVolume(userConfigmap: V1ConfigMap, path: string, readOnly: boolean): V1CephFSVolumeSource {
+    //     const monitors: string[] =  userConfigmap.data?.["ceph.monitors"]?.split(",") 
+    //         ?? (userConfigmap.data?.["ceph.monitor"] ? [userConfigmap.data?.["ceph.monitor"]] : null) ?? [];
+    //     const user: string = userConfigmap.data?.["ceph.user"] ?? "";
         
-        return {monitors, user, secretRef: {name: "ceph-auth"}, readOnly, path};
-    }
+    //     return {monitors, user, secretRef: {name: "ceph-auth"}, readOnly, path};
+    // }
     
     protected async getJobPodInfo(jobName: string, userName: string): Promise<V1Pod | undefined> {
         const r: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;

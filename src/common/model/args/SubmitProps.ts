@@ -7,4 +7,5 @@ export default interface SubmitProps {
     command?: boolean | undefined;
     dryRun?: boolean | undefined;
     annotations?:  string | undefined;
+    datasetsList: string;
 }
