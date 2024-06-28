@@ -41,7 +41,6 @@ export default class DisplayService {
       };
 
     constructor(settings: SettingsClient, apiToken: string) {
-        console.log(apiToken);
         this.km = new RestService(settings, apiToken);
         util.inspect.defaultOptions.maxArrayLength = null;
     }
