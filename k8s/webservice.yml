@@ -1,13 +1,56 @@
 apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+  name: jobman-serviceaccount
+  namespace: jobman-service
+
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+ namespace: jobman-service-exec
+ name: role-jobman-serviceaccount
+rules:
+- apiGroups:
+        - ""
+        - apps
+        - autoscaling
+        - batch
+        - extensions
+        - policy
+        - rbac.authorization.k8s.io
+  resources: ["jobs", "pods", "configmaps", "pods/log"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+ name: role-binding-jobman-serviceaccount
+ namespace: jobman-service-exec
+subjects:
+- kind: ServiceAccount
+  name: jobman-serviceaccount
+  namespace: jobman-service
+roleRef:
+ kind: Role
+ name: role-jobman-serviceaccount
+ apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: v1
 kind: ConfigMap
 metadata:
   creationTimestamp: null
   name: webservice-config
   namespace: jobman-service
 data:
-  settings.json: "{
-
-                  }"
+  settings.json: paste_here_the_adapted_settings_json_for_the_web_service_found_in_src
 
   
 ---
@@ -15,7 +58,7 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: webservice
+  name: jobman-service
   namespace: jobman-service
 spec:
   ports:
@@ -24,34 +67,38 @@ spec:
     protocol: TCP
     name: api
   selector:
-    app: webservice
+    app: jobman-service-deployment
   
 ---
 
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webservice
+  name: jobman-service-deployment
   namespace: jobman-service
 spec:
   selector:
     matchLabels:
-      app: webservice
+      app: jobman-service-deployment
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
-        app: webservice
+        app: jobman-service-deployment
     spec:
       replicas: 1
       priorityClassName: core-services
       nodeSelector:
         chaimeleon.eu/target: core-services
+      serviceAccountName: jobman-serviceaccount
       containers:
-      - image: harbor.chaimeleon-eu.i3m.upv.es/chaimeleon-services/jobman-webservice:2.0.0-BETA
+      - image: harbor.chaimeleon-eu.i3m.upv.es/chaimeleon-services/jobman-service:2.0.0-BETA
         imagePullPolicy: Always
-        name: webservice
+        name: jobman-service-deployment-container
+        env:
+        - name: SETTINGS_FILE
+          value: /opt/jobman/settings.json
         resources:
           requests:
             memory: "4Gi"
@@ -63,10 +110,10 @@ spec:
         - containerPort: 8080
           name: api
         volumeMounts:
-        - name: webservice-configMap
-          mountPath: /opt/jobman-webservice/settings.json
+        - name: webservice-configmap
+          mountPath: /opt/jobman/settings.json
           subPath: settings.json
       volumes:
-      - name: webservice-configMap
+      - name: webservice-configmap
         configMap:
           name: webservice-config
