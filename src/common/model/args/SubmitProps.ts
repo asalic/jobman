@@ -4,7 +4,7 @@ export default interface SubmitProps {
     image?: string | undefined;
     resources?: string | undefined;
     commandArgs?: string[] | undefined;
-    command?: boolean | undefined;
+    //command?: boolean | undefined;
     dryRun?: boolean | undefined;
     annotations?:  string | undefined;
     datasetsList: string;

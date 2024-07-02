@@ -95,7 +95,7 @@ export class Main {
                             "job-name": { type: "string", short: "j" },
                             image: { type: "string", short: "i" },
                             "resources-flavor": { type: "string", short: "r" },
-                            command: { type: "boolean", short: "c", default: false },
+                            //command: { type: "boolean", short: "c", default: false },
                             "dry-run": { type: "boolean", default: false },
                             annotations: {type: "string", multiple: false, short: "a"}
                         }
@@ -105,7 +105,7 @@ export class Main {
                         jobName: values["job-name"], image: values.image, 
                         resources: values["resources-flavor"],
                         commandArgs: cmdArgs.slice(cmdPos + 1, cmdArgs.length),
-                        command: values.command,
+                        //command: values.command,
                         dryRun: values["dry-run"],
                         annotations: values["annotations"],
                         datasetsList: process.env[sp.datasetsListEnvVar] ?? ""

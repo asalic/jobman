@@ -177,8 +177,9 @@ export default class KubeManager {
             // }
             const priorityClassName: string | undefined | null = this.settings.job.priorityClassName;
             const cmdArgs: string[] | undefined = props.commandArgs ? (props.commandArgs.length === 0 ? undefined : props.commandArgs) : props.commandArgs;
-            const command: string[] | undefined = props.command ? cmdArgs : undefined;
-            const args: string[] | undefined = props.command ? undefined : cmdArgs;
+            //const command: string[] | undefined = props.command ? cmdArgs : undefined;
+            const args: string[] | undefined = //props.command ? undefined : 
+                cmdArgs;
             job.spec = {
                 backoffLimit: 0,
                 template: {
@@ -193,7 +194,7 @@ export default class KubeManager {
                             {
                                 name: `container-${uuid}`,
                                 image,
-                                ...command && {command},
+                                //...command && {command},
                                 ...args && {args},
                                 //...volumeMounts && {volumeMounts},
                                 resources: {...new V1ResourceRequirements(), ...kr.resources}
