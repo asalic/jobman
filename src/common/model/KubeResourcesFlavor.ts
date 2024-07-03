@@ -9,5 +9,6 @@ export default interface KubeResourcesFlavor {
             [key: string]: string
         }
     };
+    maxRunTime: number;
 
 }

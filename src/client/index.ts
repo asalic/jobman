@@ -94,11 +94,11 @@ export class Main {
                 const tmp = cmdArgs.slice(0, cmdPos);
                 const { values } = parseArgs({ args: tmp, options: {
                             env: { type: "string", short: "e", multiple: true },
-                            "job-name": { type: "string", short: "j" },
-                            image: { type: "string", short: "i" },
-                            "resources-flavor": { type: "string", short: "r" },
+                            "job-name": { type: "string", short: "j", multiple: false },
+                            image: { type: "string", short: "i", multiple: false },
+                            "resources-flavor": { type: "string", short: "r", multiple: false },
                             //command: { type: "boolean", short: "c", default: false },
-                            "dry-run": { type: "boolean", default: false },
+                            "dry-run": { type: "boolean", default: false, multiple: false },
                             annotations: {type: "string", multiple: false, short: "a"}
                         }
                     });

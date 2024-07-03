@@ -33,57 +33,6 @@ The values found in this file override those found in the template.
 Finally, you can pass a path to a __settings.json__ file on the command line using the -s/--settings argument.
 Check the full description of comand line arguments in the [usage.md](usage.md) file.
 
-## Resources flavors
-
-**jobman** allows the user to define the resources needed for a job using a JSON structure like the following:
-
-{
-    "name"<Required>: <the actual name of the flavor, must be unique when multiple flavors defined>
-    "resources"<Required>: {
-        "requests"<Required>: <a JSON object with the same structure as one used by kubernetes for the requests section>
-        "limits"<Optional>: <a JSON object with the same structure as one used by kubernetes for the limits section>
-    }
-}
-
-Flavors can be used by passing them as a command line argument for the **submit** command (check [usage.md](usage.md)).
-You can store a list of predefined flavors directly in the settings file, along with a default one that is used whenever no argument is passed with the **submit** command.
-
-Do not include private/sensitive information in the name of a flavor.
-It can be seen by others in the cluster.
-
-No gpu example with both requests and limits:
-
-```
-{
-    "name": "no-gpu"
-    "resources": {
-        "requests": {
-            "cpu": "1000m",
-            "memory": "1G"
-        },
-        "limits": {
-            "cpu": "1000m",
-            "memory": "1G"
-        },
-    }
-}
-```
-
-One Nvidia GPU without limits example 
-
-```
-{
-    "name": "large-gpu"
-    "resources": {
-        "requests": {
-            "cpu": "1000m",
-            "memory": "1G",
-            "nvidia.com/gpu": 1
-        }
-    }
-}
-```
-
 ## Workflow and examples
 
 **jobman** can perform multiple operations related to Kubernetes job execution.
@@ -200,6 +149,10 @@ This container occupies not only CPU, RAM, and maybe GPU (if requested), but als
 Once the job execution finishes (successfully or not), the lowest execution unit (the container) frees up the CPU(s), RAM and GPU(s).
 The disk space is not released entirely, therefore each time a job ends, more disk space gets used.
 Kubernetes has an eviction policy which may remove the containers after a certain time or when the disk capacity 
+
+## Max run time
+
+In order to allow the fair use of the platform, the jobs are not allowed to run forever. Please check the maximum runtime of each flavor by calling **resources-flavors**. The command's output contains the maximum run time allowed on the platform for each resource flavor. If a job doesn't finish within the allotted time, it will be deleted automatically. Please take into account this limitation to avoid losing the progress.
 
 ## Manual release 
 

@@ -222,7 +222,7 @@ export default class DisplayService {
         this.km.resourcesFlavors()
             .then(r => this.simpleMsg(r, 
                 () => {
-                    const enabledColumns: string[] = ["name", "CPU*", "Memory*", "GPU**", "description"];
+                    const enabledColumns: string[] = ["name", "CPU*", "Memory*", "GPU**", "maxRunTime", "description"];
                     const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
                     
                     const t = new Table({
@@ -230,13 +230,19 @@ export default class DisplayService {
                         columns: [
                             {
                             name: "name",
-                            maxLen: Math.floor(totalNoColsAvailable * 0.2),
+                            maxLen: Math.floor(totalNoColsAvailable * 0.15),
                             title: "Name",
                             alignment: 'left'
                             },
                             {
+                            name: "maxRunTime",
+                            maxLen: Math.floor(totalNoColsAvailable * 0.1),
+                            title: "Max run time***",
+                            alignment: 'left'
+                            },
+                            {
                             name: "description",
-                            maxLen: Math.floor(totalNoColsAvailable * 0.35),
+                            maxLen: Math.floor(totalNoColsAvailable * 0.30),
                             title: "Description",
                             alignment: 'left'
                             }
@@ -270,6 +276,7 @@ export default class DisplayService {
                     console.log();
                     console.log("*First value is for request, second for limits");
                     console.log("**First value represents the total count of NVIDIA GPUS, followed by that of AMD GPUs, and, finally, Intel's");
+                    console.log("***In hours")
                 }))
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
     }
