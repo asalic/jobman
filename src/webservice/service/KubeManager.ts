@@ -1,7 +1,8 @@
 import { KubeConfig, BatchV1Api, V1Job, V1JobStatus, V1DeleteOptions, Watch, 
         CoreV1Api, V1PodList, HttpError, V1Pod, V1ConfigMap, 
         //V1Volume, V1VolumeMount, 
-        V1PodSecurityContext, V1ResourceRequirements, V1Status } from '@kubernetes/client-node';
+        V1PodSecurityContext, V1ResourceRequirements, V1Status, 
+        V1EnvVar} from '@kubernetes/client-node';
 import { v4 as uuidv4 }  from "uuid";
 import log from "loglevel";
 import fetch from "node-fetch";
@@ -180,6 +181,7 @@ export default class KubeManager {
             //const command: string[] | undefined = props.command ? cmdArgs : undefined;
             const args: string[] | undefined = //props.command ? undefined : 
                 cmdArgs;
+            const env: Array<V1EnvVar> | undefined = props.env?.map(e => Object.assign(new V1EnvVar(),  e));
             job.spec = {
                 backoffLimit: 0,
                 template: {
@@ -194,6 +196,7 @@ export default class KubeManager {
                             {
                                 name: `container-${uuid}`,
                                 image,
+                                ...env && { env },
                                 //...command && {command},
                                 ...args && {args},
                                 //...volumeMounts && {volumeMounts},

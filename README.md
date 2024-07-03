@@ -135,6 +135,10 @@ Do not include private information in the name of the jobs, they can be viewed b
 
 ```jobman submit -i alpine -r no-gpu -- ls -al /```
 
+- you can use env variables by passing -e/--env argument to the submit command, just be careful with quoting them; if the commands after the -- argument would not be between single quotes, your local shell (where you execute **jobman**) would try to insert the value of __$MY_VAR__ held in the environment where jobman is executed instead of the job; also, your local shell would interpret && and execute the second ls locally instead of passing the two ls' to the job as command
+
+```jobman submit -i ubuntu-python:latest -r no-gpu -e MY_VAR=/tmp -e ANOTHER_VAR='/opt/my app' -- 'ls -al $MY_VAR && ls -al "$ANOTHER_VAR"'```
+
 - list the available GPUs in a pod launched with GPU support, using the `nvidia-smi` utility; for this job, we use a resources flavor with GPU support named "small-gpu"
 
 ```jobman submit -i ubuntu_python_tensorflow:3.1cuda11 -r small-gpu -- sh -c 'nvidia-smi -L'```

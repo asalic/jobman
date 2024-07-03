@@ -5,8 +5,9 @@ Checkout jobman source code, releases, and documentation at: `https://github.com
 Usage examples:
 ```
   jobman images
-  jobman image-details -i ubuntu-python
-  jobman submit -i ubuntu-python -j job1 -r no-gpu -- python persistent-home/myScript.py
+  jobman image-details -i ubuntu-python:latest
+  jobman submit -i ubuntu-python:latest -j j -r no-gpu -- python persistent-home/myScript.py
+  jobman submit -i ubuntu-python:latest -j j -r no-gpu -e MY_VAR=/tmp -e ANOTHER_VAR='/opt/my app' -- 'ls -al $MY_VAR && ls -al "$ANOTHER_VAR"'
   jobman list
   jobman logs -j job1
   jobman delete -j job1

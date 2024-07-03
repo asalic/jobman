@@ -6,6 +6,7 @@ import path from 'path';
 import { marked } from "marked";
 import TerminalRenderer from "marked-terminal";
 
+import type EnvEntry from "../common/model/EnvEntry.js";
 import DisplayService from "./service/DisplayService.js";
 import ParameterException from '../common/model/exception/ParameterException.js';
 import SettingsManager from './service/SettingsManager.js';
@@ -92,6 +93,7 @@ export class Main {
 
                 const tmp = cmdArgs.slice(0, cmdPos);
                 const { values } = parseArgs({ args: tmp, options: {
+                            env: { type: "string", short: "e", multiple: true },
                             "job-name": { type: "string", short: "j" },
                             image: { type: "string", short: "i" },
                             "resources-flavor": { type: "string", short: "r" },
@@ -104,11 +106,12 @@ export class Main {
                 ds.submit({
                         jobName: values["job-name"], image: values.image, 
                         resources: values["resources-flavor"],
-                        commandArgs: cmdArgs.slice(cmdPos + 1, cmdArgs.length),
+                        commandArgs: cmdArgs.slice(cmdPos + 1),
                         //command: values.command,
                         dryRun: values["dry-run"],
                         annotations: values["annotations"],
-                        datasetsList: process.env[sp.datasetsListEnvVar] ?? ""
+                        datasetsList: process.env[sp.datasetsListEnvVar] ?? "",
+                        env: this.parseEnvs(values.env)
                     });
                 // } else {
                 //     throw new ParameterException("Missing container command separator '--'. It is needed to separate jobman's args and the actual command  passed to the container.");
@@ -198,6 +201,24 @@ export class Main {
         } else {
             throw new Error(`Please define an env variable called '${apiTokenEnvName}' that holds the API token for the application.`);
         }
+    }
+
+
+
+    protected parseEnvs(envs:  string[] | undefined): EnvEntry[] | undefined {
+        if (envs) {
+            const res: EnvEntry[] = [];
+            for (const e of envs) {
+                const eqIdx = e.indexOf("=");
+                if (eqIdx !== -1) {
+                    res.push({name: e.substring(0, eqIdx),  value: e.substring(eqIdx  + 1)})
+                } else  {
+                    throw  new Error(`Env variable '${e}' has no  value`);
+                }
+            }
+            return res;
+        } 
+        return undefined;
     }
 
     public getV(): string {

@@ -1,3 +1,4 @@
+import type EnvEntry from "../EnvEntry.js";
 
 export default interface SubmitProps {
     jobName?: string | undefined;
@@ -8,4 +9,5 @@ export default interface SubmitProps {
     dryRun?: boolean | undefined;
     annotations?:  string | undefined;
     datasetsList: string;
+    env?: EnvEntry[] | undefined;
 }
