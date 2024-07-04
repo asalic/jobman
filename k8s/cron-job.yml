@@ -1,3 +1,82 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  annotations:
+    kubernetes.io/enforce-mountable-secrets: "true"
+  name: jobman-queue-position
+
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jobman-queue-position-role-configmap
+rules:
+  - apiGroups:
+        - ""
+    resources:
+      - configmaps
+    verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jobman-queue-position-rolebinding-configmap
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jobman-queue-position-role-configmap
+subjects:
+  - namespace: default 
+    kind: ServiceAccount
+    name: jobman-queue-position
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: jobman-queue-position-role-jobs
+rules:
+  - apiGroups:
+        - ""
+        - apps
+        - batch
+    resources:
+      - pods
+      - jobs
+    verbs: ["get", "list"]
+
+---
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: jobman-queue-position-rolebinding-jobs
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: jobman-queue-position-role-jobs 
+subjects:
+  - namespace: default 
+    kind: ServiceAccount
+    name: jobman-queue-position
+    
+---
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jobman-queue-config
+data:
+  QUEUE: jobman-queue-position
+  EXEC_NAMESPACE: default
+
+---
+
 apiVersion: batch/v1
 kind: CronJob
 metadata:
@@ -12,6 +91,7 @@ spec:
       backoffLimit: 0
       template:
         spec:
+          priorityClassName: core-services
           nodeSelector:
             chaimeleon.eu/target: core-services
           restartPolicy: Never
@@ -20,15 +100,17 @@ spec:
             - name: jobman-queue-position-pod
               image: alpine/k8s:1.27.1
               imagePullPolicy: IfNotPresent
+              envFrom:
+              - configMapRef: 
+                  name: jobman-queue-config
               command:
                 - /bin/bash
                 - -c
-                - "export QUEUE=jobman-queue-position && kubectl get jobs --all-namespaces -o json \
-                    | jq '[.items[] | select((.status.failed == null and .status.failed==0) or (.status.succeeded == null and .status.succeeded==0) or (.status.active==1)) | select(.metadata.namespace | startswith(\"user-\"))]' \
+                - "kubectl get jobs -n $EXEC_NAMESPACE -o json \
+                    | jq '[.items[] | select((.status.failed == null and .status.failed==0) or (.status.succeeded == null and .status.succeeded==0) or (.status.active==1)) ]' \
                     | jq '{
                           updated: now | todate,
                           jobs: [ .[] | {
-                              namespace: .metadata.namespace, 
                               controllerUid: .metadata.labels.\"controller-uid\", 
                               updated: .metadata.creationTimestamp,
                               podStatus: (\"kubectl get pods --selector=job-name=\" + .metadata.name + \" -n \" + .metadata.namespace + \" -o jsonpath=\\\"{.items[0].status.phase}\\\"\"),
@@ -51,9 +133,9 @@ spec:
                       && rm ~/*.json"
               resources:
                 requests:
-                  cpu: 250m
-                  memory: "256M"
+                  cpu: 1
+                  memory: "512M"
                 limits:
                   cpu: 1
-                  memory: "1G"
+                  memory: "512M"
 
