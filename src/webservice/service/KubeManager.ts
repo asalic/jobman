@@ -82,10 +82,6 @@ export default class KubeManager {
                         let flavor  = undefined;
                         let qr: QueueResult | undefined = undefined;
                         let id: string | undefined = undefined;
-                        // /let isUserJob = false;
-                        // if (j.namespace === this.getNamespace()) {
-                        //     isUserJob = true;
-                        // }
                         if (j.resources.flavor) {
                             flavor = j.resources.flavor;
                             id = flavor;

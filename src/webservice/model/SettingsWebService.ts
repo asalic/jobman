@@ -79,8 +79,6 @@ export default interface HarborProject {
 
 
 export interface SettingsWebService {
-    sharedNamespace: string;
-    sharedConfigmap: string;
     jobsQueue: JobsQueue;
     harborProjects: HarborProject[];
     projects: HarborProject[];

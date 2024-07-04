@@ -1,6 +1,4 @@
 {
-    "sharedNamespace": "default",
-    "sharedConfigmap": "jobman-jobs-config",
     "jobsQueue": {
         "namespace": "default",
         "configmap": "jobman-queue-position",
