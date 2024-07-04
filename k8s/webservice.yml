@@ -11,7 +11,6 @@ metadata:
 kind: Role
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
- namespace: jobman-service-exec
  name: role-jobman-serviceaccount
 rules:
 - apiGroups:
@@ -31,16 +30,42 @@ kind: RoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
  name: role-binding-jobman-serviceaccount
- namespace: jobman-service-exec
 subjects:
 - kind: ServiceAccount
   name: jobman-serviceaccount
-  namespace: jobman-service
+  namespace: default
 roleRef:
  kind: Role
  name: role-jobman-serviceaccount
  apiGroup: rbac.authorization.k8s.io
 
+---
+
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+ name: role-jobman-serviceaccount-configmap
+rules:
+- apiGroups:
+        - ""
+  resources: ["configmaps"]
+  verbs: ["get"]
+
+---
+
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+ name: role-binding-jobman-serviceaccount-configmap
+subjects:
+- kind: ServiceAccount
+  name: jobman-serviceaccount
+  namespace: default
+roleRef:
+ kind: Role
+ name: role-jobman-serviceaccount-configmap
+ apiGroup: rbac.authorization.k8s.io
+ 
 ---
 
 apiVersion: v1
