@@ -33,6 +33,12 @@ The values found in this file override those found in the template.
 Finally, you can pass a path to a __settings.json__ file on the command line using the -s/--settings argument.
 Check the full description of comand line arguments in the [usage.md](usage.md) file.
 
+## Job naming
+
+When you submit a job, you can optionally specify a name. 
+If you don't, **jobman** will generate a UUID v4 and use it for generating the name. 
+For both cases, the final name will be prefixed by your username followed by a dash (-).
+
 ## Workflow and examples
 
 **jobman** can perform multiple operations related to Kubernetes job execution.
