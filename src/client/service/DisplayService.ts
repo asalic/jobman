@@ -15,6 +15,7 @@ import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js"
 import type JobInfoPage from "../../common/model/JobInfoPage.js";
 import JobInfo from "../../common/model/JobInfo.js";
 import TerminalRenderer from "marked-terminal";
+import type QueueResultDisplay from "../../common/model/QueueResultDisplay.js";
 
 type SimpleMsgCallbFunction = (...args: any[]) => void;
 
@@ -47,7 +48,7 @@ export default class DisplayService {
 
     public queue(): void {
         this.km.queue()
-            .then(r => this.simpleMsg(r,  () => {
+            .then((r: KubeOpReturn<QueueResultDisplay | null>) => this.simpleMsg(r,  () => {
                     if (r.payload) {
                         const enabledColumns: string[] = ["Flavor", "CPUs/Memory/GPUs", "Jobs pending", "Jobs running"];
                         const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
@@ -81,7 +82,7 @@ export default class DisplayService {
                                 }
                             ]
                         });
-                        t.addRows(r.payload.result);
+                        t.addRows(Object.values(r.payload.result));
                         t.printTable();
                         console.log(`Last queue update on: ${new Intl.DateTimeFormat('en', { year: 'numeric', month: 'short', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(new Date(r.payload.updated))}`)
                     } else {

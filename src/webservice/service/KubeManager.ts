@@ -67,7 +67,7 @@ export default class KubeManager {
             if (cm) {
                 const queue: QueueConfigMap | null = cm.data?.[this.settings.jobsQueue.configmap] 
                     ? JSON.parse(cm.data[this.settings.jobsQueue.configmap] ?? "") as QueueConfigMap : null;
-                const result = new Map<string, QueueResult>();
+                const result: {[key: string]: QueueResult} = Object.create(null);//new Map<string, QueueResult>();
                 if (queue) {
                     for (const j of queue.jobs) {
                         const cpu: string | undefined = j.resources.requests?.["cpu"];
@@ -89,7 +89,7 @@ export default class KubeManager {
                             //flavor = "<no label>";//`unk-${uuidv4()}`
                             id = `${cpu}/${memory}/${gpu}`;
                         }
-                        qr = result.get(id);
+                        qr = result[id];
                         if (qr === undefined) {
                             qr = {
                                 id,
@@ -100,7 +100,7 @@ export default class KubeManager {
                                 cpu, memory, gpu,
                                 //userJobsCnt: isUserJob ? 1 : 0
                             };
-                            result.set(id, qr);
+                            result[id] =  qr;
                         }
 
                         //qr.count = qr.count + 1;
