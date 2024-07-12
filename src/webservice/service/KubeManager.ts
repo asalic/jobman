@@ -296,16 +296,12 @@ export default class KubeManager {
     public async details(props: DetailsProps, userName: string): Promise<KubeOpReturn<V1Job | null>> {
         if (props.jobName) {
             const r: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
-            if (r) {
-                if (r.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName) {
+                if (this.userOwnsJob(userName, r)) {
                     return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, r);
 
                 } else {
-                    return  new KubeOpReturn(KubeOpReturnStatus.Error, `Cannot get details for job '${props.jobName}'`, null);
+                    return  new KubeOpReturn(KubeOpReturnStatus.Error, `Job '${props.jobName}' not found.`, null);
                 }
-            } else {
-                return  new KubeOpReturn(KubeOpReturnStatus.Error, `Cannot get details for job '${props.jobName}'`, null);
-            }
         } else {
             return new KubeOpReturn(KubeOpReturnStatus.Error, "Job name required", null);
         }
@@ -315,31 +311,39 @@ export default class KubeManager {
             Promise<KubeOpReturn<string | null>>{
         try {
             if (props.jobName) {
-                const podName: string | undefined =  (await this.getJobPodInfo(props.jobName, userName))?.metadata?.name;
+                const j: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
+                if (this.userOwnsJob(userName, j)) {
+                    const podName: string | undefined =  (await this.getJobPodInfo(props.jobName, userName))?.metadata?.name;
 
-                //console.dir((await this.k8sApi.readNamespacedJobStatus(props.jobName, this.getNamespace())).body.status);
-                if (podName) {
-                    const ns: string = this.getNamespace();
-                    console.log(`Getting log for pod '${podName}', user '${this.getUsername()}' in namespace '${ns}'`);
-                    //console.dir((await this.k8sCoreApi.readNamespacedPodStatus(podName, this.getNamespace())).body.status?.conditions);
-                    const log: string = (await this.k8sCoreApi.readNamespacedPodLog(podName, ns)).body;
-                    return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? "<Empty Log>" :  log);
+                    //console.dir((await this.k8sApi.readNamespacedJobStatus(props.jobName, this.getNamespace())).body.status);
+                    if (podName) {
+                        const ns: string = this.getNamespace();
+                        console.log(`Getting log for pod '${podName}', user '${this.getUsername()}' in namespace '${ns}'`);
+                        //console.dir((await this.k8sCoreApi.readNamespacedPodStatus(podName, this.getNamespace())).body.status?.conditions);
+                        const log: string = (await this.k8sCoreApi.readNamespacedPodLog(podName, ns)).body;
+                        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? "<Empty Log>" :  log);
+                    } else {
+                        return new KubeOpReturn(KubeOpReturnStatus.Error, `Unable to determine the pod name for job '${props.jobName}'.`, null);
+                    }
                 } else {
-                    return new KubeOpReturn(KubeOpReturnStatus.Error, `Unable to determine the pod name for job '${props.jobName}'.`, null);
+                    return new KubeOpReturn(KubeOpReturnStatus.Error, `Job '${props.jobName}' not found.`, null);
+
                 }
             } else {
                 return new KubeOpReturn(KubeOpReturnStatus.Error, "Job name required", null);
             }
         } catch (e) {
-            return this.handleKubeOpsError(e);
+            if (e instanceof HttpError && e.statusCode === 404) {
+                return new KubeOpReturn(KubeOpReturnStatus.Error, `Job '${props.jobName}' not found.`, null);
+            } else {
+                return this.handleKubeOpsError(e);
+            }
         }
     }
 
     public async delete(props: DeleteProps, userName: string): Promise<KubeOpReturn<null>> {
         try {
-            const uname: string | undefined = this.clusterConfig.getCurrentUser()?.name;
-            if (!uname) 
-                throw new Error("Unable to determine user name from the current context");
+
             if (props.jobName) {
                 const r: DeleteJobHandlerResult = await this.deleteJobHandler(this.getNamespace(), props.jobName);
                 return new KubeOpReturn(r.status,  r.message, null);
@@ -378,7 +382,11 @@ export default class KubeManager {
                 return new KubeOpReturn(KubeOpReturnStatus.Error, "Job name required", null);
             }
         } catch (e) {
-            return this.handleKubeOpsError(e);
+            if (e instanceof HttpError && e.statusCode === 404) {
+                return new KubeOpReturn(KubeOpReturnStatus.Error, `Job '${props.jobName}' not found.`, null);
+            } else {
+                return this.handleKubeOpsError(e);
+            }
         }
     }
 
@@ -466,14 +474,22 @@ export default class KubeManager {
         return Object.keys(r).length > 0 ? r : null;
     } 
 
-    protected async deleteJobHandler(namespace: string, jobName: string): Promise<DeleteJobHandlerResult> {
-        const r = await this.deleteJob(namespace, jobName);
-        const status: KubeOpReturnStatus = this.getStatusKubeOp(r.response.statusCode);
-        let message = `Job '${jobName}' has been successfully deleted by user '${namespace}'`;
-        if (status !==  KubeOpReturnStatus.Success) {
-            message = `Unable to delete job '${jobName}' with error code ${r.response.statusCode ?? "'unknown'"} and message: ${r.response.statusMessage ?? "'unknown'"}`
+    protected async deleteJobHandler(jobName: string, userName: string): Promise<DeleteJobHandlerResult> {
+        let message = "Undefined";
+        let status: KubeOpReturnStatus = KubeOpReturnStatus.Unknown;
+        const j: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
+        if (this.userOwnsJob(userName, j)) {
+            const r = await this.deleteJob(this.getNamespace(), jobName);
+            status = this.getStatusKubeOp(r.response.statusCode);
+            message = `Job '${jobName}' has been successfully deleted by user '${this.getNamespace()}'`;
+            if (status !==  KubeOpReturnStatus.Success) {
+                message = `Unable to delete job '${jobName}' with error code ${r.response.statusCode ?? "'unknown'"} and message: ${r.response.statusMessage ?? "'unknown'"}`
+            }
+        } else {
+            throw new KubeException(`Job '${jobName}' not found.`);
         }
-        return  {message, status};
+
+        
     }
 
     protected deleteJob(namespace: string, jobName: string): Promise<{
@@ -587,7 +603,7 @@ export default class KubeManager {
     
     protected async getJobPodInfo(jobName: string, userName: string): Promise<V1Pod | undefined> {
         const r: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
-        if (r.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName) {
+        if (this.userOwnsJob(userName,r)) {
             const cUid: string | undefined = r?.metadata?.labels?.["controller-uid"];
             if (cUid) {
                 const podLblSel: string = "controller-uid=" + cUid;
@@ -598,7 +614,7 @@ export default class KubeManager {
                 throw new KubeException(`Unable to determine controller UID for job '${jobName}'.`);
             }
         } else {
-            throw new KubeException(`No job named '${jobName}' found for the user named ${userName}.`);
+            throw new KubeException(`Job '${jobName}' not found.`);
         }
     }
 
@@ -701,6 +717,10 @@ export default class KubeManager {
 
     protected fetchCustom(url: string, init?: RequestInit): Promise<Response> {
         return fetch(url, init);
+    }
+
+    protected userOwnsJob(userName: string, job: V1Job): boolean {
+        return job.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName;
     }
 
     // protected updateQueueResultJobStats(qrStats: QueueResultJobStats, kubeStats: V1JobStatus) {
