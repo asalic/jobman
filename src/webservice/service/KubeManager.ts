@@ -1,14 +1,13 @@
 import { KubeConfig, BatchV1Api, V1Job, V1JobStatus, V1DeleteOptions, Watch, 
         CoreV1Api, V1PodList, HttpError, V1Pod, V1ConfigMap, 
         //V1Volume, V1VolumeMount, 
-        V1PodSecurityContext, V1ResourceRequirements, V1Status, 
+        V1PodSecurityContext, V1ResourceRequirements, 
         V1EnvVar} from '@kubernetes/client-node';
 import { v4 as uuidv4 }  from "uuid";
 import log from "loglevel";
 import fetch from "node-fetch";
 import type { RequestInit, Response } from "node-fetch";
 import https from "https";
-import http from 'http';
 import fs from "node:fs";
 //import path from "node:path";
 import JobInfo from '../../common/model/JobInfo.js';
@@ -210,7 +209,7 @@ export default class KubeManager {
             } else {
                 const r = await this.k8sApi.createNamespacedJob(namespace, job);
                 return new KubeOpReturn(this.getStatusKubeOp(r.response.statusCode), 
-                    `Job named '${jn}' created successfully by user '${this.getUsername()}'`, null);
+                    `Job named '${jn}' created successfully by user '${userName}'`, null);
 
             }
             //}
@@ -318,7 +317,7 @@ export default class KubeManager {
                     //console.dir((await this.k8sApi.readNamespacedJobStatus(props.jobName, this.getNamespace())).body.status);
                     if (podName) {
                         const ns: string = this.getNamespace();
-                        console.log(`Getting log for pod '${podName}', user '${this.getUsername()}' in namespace '${ns}'`);
+                        console.log(`Getting log for pod '${podName}', user '${userName}' in namespace '${ns}'`);
                         //console.dir((await this.k8sCoreApi.readNamespacedPodStatus(podName, this.getNamespace())).body.status?.conditions);
                         const log: string = (await this.k8sCoreApi.readNamespacedPodLog(podName, ns)).body;
                         return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? "<Empty Log>" :  log);
@@ -345,7 +344,7 @@ export default class KubeManager {
         try {
 
             if (props.jobName) {
-                const r: DeleteJobHandlerResult = await this.deleteJobHandler(this.getNamespace(), props.jobName);
+                const r: DeleteJobHandlerResult = await this.deleteJobHandler(props.jobName, userName);
                 return new KubeOpReturn(r.status,  r.message, null);
             } else if (props.all) {
                 const  r: KubeOpReturn<V1Job[]> = await this.getJobsList(this.getNamespace(), userName);
@@ -353,7 +352,7 @@ export default class KubeManager {
                     const idsStatus: Map<KubeOpReturnStatus, string[]> = new Map<KubeOpReturnStatus, string[]>()
                     for (const j of r.payload) {
                         if (j.metadata?.name) {
-                            const r = await this.deleteJobHandler(this.getNamespace(), j.metadata?.name);
+                            const r = await this.deleteJobHandler(j.metadata?.name, userName);
                             let ids: string[] | undefined = idsStatus.get(r.status);
                             if (!ids) {
                                 ids = [];
@@ -479,30 +478,24 @@ export default class KubeManager {
         let status: KubeOpReturnStatus = KubeOpReturnStatus.Unknown;
         const j: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
         if (this.userOwnsJob(userName, j)) {
-            const r = await this.deleteJob(this.getNamespace(), jobName);
+            log.info(`Deleting job named '${jobName}' for user '${userName}' in namespace '${this.getNamespace()}'`);
+            const deleteObj: V1DeleteOptions = {
+                apiVersion: 'v1',
+                propagationPolicy: 'Background'
+                }
+            const r = await this.k8sApi.deleteNamespacedJob(jobName, this.getNamespace(), 
+                undefined, undefined, undefined, undefined, undefined, deleteObj);
             status = this.getStatusKubeOp(r.response.statusCode);
-            message = `Job '${jobName}' has been successfully deleted by user '${this.getNamespace()}'`;
             if (status !==  KubeOpReturnStatus.Success) {
                 message = `Unable to delete job '${jobName}' with error code ${r.response.statusCode ?? "'unknown'"} and message: ${r.response.statusMessage ?? "'unknown'"}`
+            } else {    
+                message = `Job '${jobName}' has been successfully deleted.`;
             }
         } else {
             throw new KubeException(`Job '${jobName}' not found.`);
         }
-
+        return {message, status};
         
-    }
-
-    protected deleteJob(namespace: string, jobName: string): Promise<{
-        response: http.IncomingMessage;
-        body: V1Status;
-    }> {
-        const deleteObj: V1DeleteOptions = {
-            apiVersion: 'v1',
-            propagationPolicy: 'Background'
-            }
-        log.info(`Deleting job named '${jobName}' for user '${this.getUsername()}' in namespace '${namespace}'`);
-        return  this.k8sApi.deleteNamespacedJob(jobName, namespace, 
-            undefined, undefined, undefined, undefined, undefined, deleteObj);
     }
 
     protected async getConfigmap(configMapName: string, namespace?: string): Promise<V1ConfigMap> {
@@ -635,7 +628,7 @@ export default class KubeManager {
 
         //     `metadata.annotations.${this.settings.job.userNameAnnotation}=${userName}`
         // );
-        const r: V1Job[] = res.body.items.filter((j:V1Job) => j.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName);
+        const r: V1Job[] = res.body.items.filter((j:V1Job) => this.userOwnsJob(userName, j));
         return new KubeOpReturn(this.getStatusKubeOp(res.response.statusCode), res.response.statusMessage, r);
     }
 
@@ -686,14 +679,14 @@ export default class KubeManager {
         return clusterConfigTmp;
     }
 
-    public getUsername() : string {
-        const uname: string | undefined = this.clusterConfig.getCurrentUser()?.name;
-        if (!uname) 
-            throw new Error("Unable to determine user name from the current context");
-        else 
-            return uname;
+    // public getUsername() : string {
+    //     const uname: string | undefined = this.clusterConfig.getCurrentUser()?.name;
+    //     if (!uname) 
+    //         throw new Error("Unable to determine user name from the current context");
+    //     else 
+    //         return uname;
 
-    }
+    // }
 
     protected handleKubeOpsError(e: any): KubeOpReturn<null> {
         if (e instanceof HttpError) {
