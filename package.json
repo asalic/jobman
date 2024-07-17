@@ -37,7 +37,7 @@
     "prod-webservice": "node dist/webservice/index.js",
     "dev-webservice": "nodemon --exec 'npm start-webservice'",
     "test": "NODE_OPTIONS=--experimental-vm-modules npx jest",
-    "build": "node_modules/.bin/tsc && cp usage.md ./dist/"
+    "build": "node_modules/.bin/tsc && cp usage.md examples.md ./dist/"
   },
   "repository": {
     "type": "git",
