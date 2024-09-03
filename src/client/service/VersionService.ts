@@ -8,6 +8,7 @@ import type { NewVersion } from "../model/SettingsClient.js";
 import UnhandledValueError from "../error/UnhandledValueError.js";
 import type LastUpdateCheck from "../model/LastUpdateCheck.js";
 import { Readable } from "node:stream";
+import { compareVersions } from 'compare-versions';
 
 export default class VersionService {
 
@@ -50,10 +51,7 @@ export default class VersionService {
         if (newVer) {
             const cVer: string | undefined = this.getCurrentVer();
             if (cVer) {
-                const newVerN = Number(newVer.replace(/[^0-9]/g, ''));
-                const cVerN = Number(cVer.replace(/[^0-9]/g, ''));
-                //const comp: number | undefined = cVer?.toLowerCase()?.localeCompare(newVer.toLowerCase());
-                return newVerN >  cVerN ?
+                return compareVersions(newVer, cVer) === 1 ?
                     VersionService.NEW_VER_AVAILABLE(newVer, this.newVersion?.customMessage ?? "") : null;
 
             } else {
