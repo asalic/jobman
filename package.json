@@ -1,6 +1,6 @@
 {
   "name": "jobman",
-  "version": "2.0.1-BETA",
+  "version": "2.0.2-BETA",
   "main": "./dist/index.ts",
   "exports": {
     "default": "./src/"
@@ -21,7 +21,6 @@
     "node-fetch":"^3.3.2",
     "tar-stream": "3.1.5",
     "uuid": "^10.0.0",
-    "zlib": "^1.0.5",
     "express": "^4.19.2",
     "http-errors": "^2.0.0",
     "http-proxy-middleware": "2.0.3",
