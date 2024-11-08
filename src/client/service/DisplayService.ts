@@ -12,10 +12,10 @@ import type DetailsProps from "../../common/model/args/DetailsProps.js";
 import type LogProps from "../../common/model/args/LogProps.js";
 import type DeleteProps from "../../common/model/args/DeleteProps.js";
 import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
-import type JobInfoPage from "../../common/model/JobInfoPage.js";
 import JobInfo from "../../common/model/JobInfo.js";
 import TerminalRenderer from "marked-terminal";
 import type QueueResultDisplay from "../../common/model/QueueResultDisplay.js";
+import type Page from "../../common/model/Page.js";
 
 type SimpleMsgCallbFunction = (...args: any[]) => void;
 
@@ -118,7 +118,7 @@ export default class DisplayService {
                             }
                         ]
                     });
-                    t.addRows(r.payload?.imageDetails);
+                    t.addRows(r.payload?.data);
                     t.printTable();
                 }))
                 .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
@@ -131,7 +131,7 @@ export default class DisplayService {
             // Define custom renderer
             renderer: new TerminalRenderer()
           });
-        this.km.imageDetails(props)
+        this.km.imageDescription(props)
             .then(r => this.simpleMsg(r,  () => console.log(marked(r.payload ?? "&lt;__No description available__&gt;"))))
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
 
@@ -157,7 +157,7 @@ export default class DisplayService {
         //     })
         //   });
         this.km.list()
-            .then((r: KubeOpReturn<JobInfoPage | null>) => this.simpleMsg(r, 
+            .then((r: KubeOpReturn<Page<JobInfo> | null>) => this.simpleMsg(r, 
                 () => {
                     const enabledColumns: string[] = ["name", "status", "flavor", "Launch Date"];
                     const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
@@ -193,7 +193,7 @@ export default class DisplayService {
                             }
                         ]
                     });
-                    t.addRows(r.payload?.jobInfos);
+                    t.addRows(r.payload?.data);
                     t.printTable();
                 }))
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
@@ -221,7 +221,7 @@ export default class DisplayService {
 
     public resourcesFlavors(): void {
         this.km.resourcesFlavors()
-            .then(r => this.simpleMsg(r, 
+            .then((r: KubeOpReturn<Page<KubeResourcesFlavor> | null>) => this.simpleMsg(r, 
                 () => {
                     const enabledColumns: string[] = ["name", "CPU*", "Memory*", "GPU**", "maxRunTime", "description"];
                     const totalNoColsAvailable = this.getTerminalNoCols() - (enabledColumns.length  * DisplayService.TABLE_COL_MARGIN);
@@ -272,7 +272,7 @@ export default class DisplayService {
                             }
                         ]
                     });
-                    t.addRows(r.payload?.kubeResourcesFlavors);
+                    t.addRows(r.payload?.data);
                     t.printTable();
                     console.log();
                     console.log("*First value is for request, second for limits");

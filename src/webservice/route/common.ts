@@ -6,7 +6,7 @@ import { KubeOpReturn, KubeOpReturnStatus } from '../../common/model/KubeOpRetur
 import type OidcAuth from '../service/OidcAuth.js';
 import type AbstractDto from '../../common/model/AbstractDto.js';
 
-async function commonRequest<T extends AbstractDto | null>(req: Request, res: Response, next: NextFunction, oidcAuth: OidcAuth, method: Function) {
+async function commonRequest<T extends AbstractDto | string | null>(req: Request, res: Response, next: NextFunction, oidcAuth: OidcAuth, method: Function) {
     let payload: KubeOpReturn<T | null> | null = null;
     let sc: number = 501;
     try {

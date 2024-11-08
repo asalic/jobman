@@ -5,12 +5,13 @@ import type { Request } from 'express';
 import type { Response } from 'express';
 import type { NextFunction } from 'express';
 import commonRequest from './common.js';
-import type KubeResourcesFlavorPage from '../../common/model/KubeResourcesFlavorPage.js';
+import type Page from '../../common/model/Page.js';
+import type KubeResourcesFlavor from '../../common/model/KubeResourcesFlavor.js';
 
 const resourcesFlavorsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
     let routerObj = express.Router();
     routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        commonRequest<KubeResourcesFlavorPage | null>(req, res, next, oidcAuth, km.resourcesFlavors.bind(km));
+        commonRequest<Page<KubeResourcesFlavor> | null>(req, res, next, oidcAuth, km.resourcesFlavors.bind(km));
     });
 
     return routerObj;

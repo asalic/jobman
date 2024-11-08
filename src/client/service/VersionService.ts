@@ -122,7 +122,11 @@ export default class VersionService {
                     if (datas.size === 1) {
                         try {
                             //console.log(datas.values().next().value);
-                            const pkgObj = JSON.parse(datas.values().next().value);
+                            let pkgObj = null;
+                            const d:  string | null = datas?.values()?.next()?.value ?? null;
+                            if (d) {
+                                pkgObj = JSON.parse(d);
+                            }
                             if (pkgObj) {
                                 const newVer: string | undefined = pkgObj["version"];
                                 if (newVer) {

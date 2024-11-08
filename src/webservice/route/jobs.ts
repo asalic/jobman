@@ -6,15 +6,16 @@ import type { Response } from 'express';
 import type { NextFunction } from 'express';
 import commonRequest from './common.js';
 import type SubmitProps from '../../common/model/args/SubmitProps.js';
-import type { V1Job } from '@kubernetes/client-node';
-import type JobInfoPage from '../../common/model/JobInfoPage.js';
+import type JobDetails from '../../common/model/JobDetails.js';
+import type JobInfo from '../../common/model/JobInfo.js';
+import type Page from '../../common/model/Page.js';
 
 
 const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
   let routerObj = express.Router();
   
   routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<JobInfoPage | null>(req, res, next, oidcAuth, km.list.bind(km));
+    commonRequest<Page<JobInfo> | null>(req, res, next, oidcAuth, km.list.bind(km));
   });
 
   routerObj.post('/', async (req: Request, res: Response, next: NextFunction) => {
@@ -31,7 +32,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
 
 
   routerObj.get('/:jobName/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<V1Job | null>(req, res, next, oidcAuth, km.details.bind(km, { jobName: req.params["jobName"] ?? "" }));
+    commonRequest<JobDetails | null>(req, res, next, oidcAuth, km.details.bind(km, { jobName: req.params["jobName"] ?? "" }));
   });
 
   routerObj.get('/:jobName/logs/', async (req: Request, res: Response, next: NextFunction) => {
