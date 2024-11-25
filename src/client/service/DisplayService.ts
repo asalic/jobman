@@ -139,7 +139,9 @@ export default class DisplayService {
 
     public submit(props: SubmitProps): void {
         this.km.submit(props)
-            .then(r => this.simpleMsg(r))
+            .then(r => {
+                this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job successfully submitted.", null));
+            })
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
     }
     
@@ -215,7 +217,9 @@ export default class DisplayService {
 
     public delete(props: DeleteProps): void {
         this.km.delete(props)
-            .then(r => this.simpleMsg(r))
+            .then(r => {
+                this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job(s) delete intent submitted successfully. Kubernetes may take a while until it actually performs the operations.", null));
+            })
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
     }
 

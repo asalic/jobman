@@ -1,10 +1,10 @@
 enum EJobStatus {
-    Pending = "Pending", 
-    PendingError = "Pending - error", 
-    Running = "Running", 
-    Succeeded = "Succeeded", 
-    Failed = "Failed", 
-    Unknown = "Unknown"
+    Pending = "PENDING", 
+    PendingError = "PENDING_ERROR", 
+    Running = "RUNNING", 
+    Succeeded = "SUCCESS", 
+    Failed = "ERROR", 
+    Unknown = "UNKNOWN"
 }
 
 export default EJobStatus;

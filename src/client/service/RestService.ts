@@ -1,6 +1,6 @@
 import fetch from "node-fetch";
 
-import { KubeOpReturn } from "../../common/model/KubeOpReturn.js";
+import { KubeOpReturn, KubeOpReturnStatus } from "../../common/model/KubeOpReturn.js";
 import type QueueResultDisplay from "../../common/model/QueueResultDisplay.js";
 import type SubmitProps from "../../common/model/args/SubmitProps.js";
 import type {SettingsClient} from "../model/SettingsClient.js";
@@ -8,7 +8,6 @@ import type ImageDetailsProps from "../../common/model/args/ImageDetailsProps.js
 import type DetailsProps from "../../common/model/args/DetailsProps.js";
 import type LogProps from "../../common/model/args/LogProps.js";
 import type DeleteProps from "../../common/model/args/DeleteProps.js";
-import type AbstractDto from "../../common/model/AbstractDto.js";
 import type JobDetails from "../../common/model/JobDetails.js";
 import type JobInfo from "../../common/model/JobInfo.js";
 import type Page from "../../common/model/Page.js";
@@ -42,7 +41,7 @@ export default class RestService {
         return this.commonCall<string | null>(`/images/${props.image}/description`, "GET");
     }
 
-    public images(): Promise<KubeOpReturn<Page<ImageDetails>>> {
+    public images(): Promise<KubeOpReturn<Page<ImageDetails> | null>> {
         return this.commonCall<Page<ImageDetails>>("/images/", "GET");
     }
 
@@ -62,11 +61,11 @@ export default class RestService {
         }
     }
 
-    public resourcesFlavors(): Promise<KubeOpReturn<Page<KubeResourcesFlavor>>> {
-        return this.commonCall<Page<KubeResourcesFlavor>>("/resources-flavors/", "GET");
+    public resourcesFlavors(): Promise<KubeOpReturn<Page<KubeResourcesFlavor> | null>> {
+        return this.commonCall<Page<KubeResourcesFlavor> | null>("/resources-flavors/", "GET");
     }
 
-    protected commonCall<T extends AbstractDto | null>(path: string, method: string, props?: any): Promise<KubeOpReturn<T>> {
+    protected commonCall<T>(path: string, method: string, props?: any): Promise<KubeOpReturn<T | null>> {
         return new Promise((resolve, reject) => {
             const opts = {
                 method,
@@ -79,7 +78,14 @@ export default class RestService {
             fetch(this.settings.webServiceUrl + path, opts)
                 .then(
                 async r => {
-                    const g: KubeOpReturn<T> = KubeOpReturn.from<T>((await r.json()));
+                    const txt = await r.text();
+                    let resp = null;
+                    if (txt) {
+                        resp = JSON.parse(txt) as T;
+                    }                    
+                    
+                    const g: KubeOpReturn<T | null> = new KubeOpReturn(KubeOpReturnStatus.Success, undefined, resp);
+                        //KubeOpReturn.from<T>((await r.json()));
                     resolve(g);
                 },
                 e => reject(e)
