@@ -4,6 +4,8 @@ import type UserRepresentation from "../model/UserRepresentation.js";
 import type KeycloakApiToken from "../model/KeycloakApiToken.js";
 import AuthenticationError from "../error/AuthenticationError.js";
 import type { SettingsWebService } from '../model/SettingsWebService.js';
+import type UserAuthorization from '../model/UserAuthorization.js';
+import EAuthorizationType from '../model/EAuthorizationType.js';
 
 
 export default class OidcAuth {
@@ -14,8 +16,41 @@ export default class OidcAuth {
         this.appConf = appConf;
     }
 
-    public async auth(req: Request): Promise<UserRepresentation> {
-        const reqKap: KeycloakApiToken | null = this.parseReqUserRepresentation(req);
+    public  async authenticateAndAuthorize(req: Request): Promise<string | null> {
+      const userAuth: UserAuthorization =  this.getUserAuthorization(req);
+      if (userAuth.type === EAuthorizationType.APITOKEN) {
+        const ur: UserRepresentation = await this.auth(userAuth.token);
+        const kapReq: KeycloakApiToken  | null = this.validateApiToken(userAuth.token,  ur);
+        if (kapReq) {
+          return ur.username;
+        } else {
+          return null;
+        }
+
+      } else if (userAuth.type === EAuthorizationType.BEARER) {
+        const headers: Headers = new Headers();
+        headers.set("Authorization", `Bearer ${userAuth.token}`);
+        const authR: Response = await fetch(
+        this.appConf.oidc.url + "/realms/" + this.appConf.oidc.realm + "/protocol/openid-connect/userinfo",
+            {
+              method: "GET",
+              headers
+            }
+          );
+        if (authR.status === 200) {
+          const info: any = await authR.json();
+          return info["preferred_username"];
+        } else {
+          return null;
+        }
+      } else {
+        throw  new Error(`Unsupported authorization woth type '${userAuth.type}'`);
+      }
+
+    }
+
+    public async auth(token:  string): Promise<UserRepresentation> {
+        const reqKap: KeycloakApiToken | null = this.parseReqUserRepresentation(token);
         if (reqKap) {
           const headers: Headers = new Headers();
           //headers.set('client_id', this.appConf.oidc.clientId);
@@ -66,7 +101,7 @@ export default class OidcAuth {
         } else {
           throw new AuthenticationError("Token format invalid", "", 401);
         }
-      }
+    }
   
       public userRepresentationKeycloak(resp: any): UserRepresentation {
         const result: {[k: string]: any} = Object.create(null);
@@ -87,27 +122,38 @@ export default class OidcAuth {
         return result as UserRepresentation;
       }
   
-      public validateApiToken(req:  Request,  ur: UserRepresentation): KeycloakApiToken | null {
-      const kapReq: KeycloakApiToken | null = this.parseReqUserRepresentation(req);
+      public validateApiToken(token: string,  ur: UserRepresentation): KeycloakApiToken | null {
+      const kapReq: KeycloakApiToken | null = this.parseReqUserRepresentation(token);
       if (kapReq && kapReq.secret === ur.apiToken.secret) {
         return kapReq;
       } else {
         return null;
       }
     }
-  
-    public parseReqUserRepresentation(req: Request): KeycloakApiToken | null {
+
+    public getUserAuthorization(req: Request): UserAuthorization {
       const token: string | null | undefined = req.headers["authorization"];
       if (token) {
         const parts: string[] = token.split(" ");
-        if (parts.length === 2 && parts[1] && parts[1].length > 0) {
-          //console.log(Buffer.from(parts[1], 'base64').toString('utf-8'));
-          return JSON.parse(Buffer.from(parts[1], 'base64').toString('utf-8')) as KeycloakApiToken;
+        if (parts.length === 2 && parts[0] && parts[1] && parts[1].length > 0) {
+          const type: string = parts[0].toLowerCase();
+          switch (type) {
+            case EAuthorizationType.BEARER: return {type: EAuthorizationType.BEARER, token: parts[1] };
+            case EAuthorizationType.APITOKEN: return {type: EAuthorizationType.APITOKEN, token: parts[1] };
+            default: throw new Error(`Unsupported authroization type '${type}'`);
+          }
         } else {
-          return null;
+          throw new AuthenticationError(`Invalid authorization header.`, 
+            `Cannot parse authorization header. It should be either 'Bearer' or 'ApiToken' followed by the actual token, split by a single space.`, 401);
         }
       } else {
-        return null;
+        throw new AuthenticationError(`Missing authorization header.`, 
+          `No value found for the authorization value. It should be either 'Bearer' or 'ApiToken' followed by the actual token, split by a single space.`, 401);
       }
+
+    }
+  
+    public parseReqUserRepresentation(token: string): KeycloakApiToken | null {
+          return JSON.parse(Buffer.from(token, 'base64').toString('utf-8')) as KeycloakApiToken;
     }
 }

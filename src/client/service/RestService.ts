@@ -70,7 +70,7 @@ export default class RestService {
             const opts = {
                 method,
                 headers:{
-                  "Authorization":`ApiToken ${this.apiToken}`,
+                  "Authorization": `ApiToken ${this.apiToken}`,
                   ...props && {"Content-Type": "application/json" }
                 },
                 ...props && { body: JSON.stringify(props) }
@@ -79,14 +79,21 @@ export default class RestService {
                 .then(
                 async r => {
                     const txt = await r.text();
-                    let resp = null;
+                    let resp: any = null;
                     if (txt) {
                         resp = JSON.parse(txt) as T;
-                    }                    
+                    }                   
                     
-                    const g: KubeOpReturn<T | null> = new KubeOpReturn(KubeOpReturnStatus.Success, undefined, resp);
-                        //KubeOpReturn.from<T>((await r.json()));
-                    resolve(g);
+                    if (r.status >=200 && r.status <= 299) {
+                        resolve(new KubeOpReturn(KubeOpReturnStatus.Success, undefined, resp));
+                    } else {
+                        if (resp) {
+                            resolve(new KubeOpReturn(KubeOpReturnStatus.Error, resp["message"], null));
+                        } else{
+                            resolve(new KubeOpReturn(KubeOpReturnStatus.Error, txt, null));
+
+                        }                        
+                    }
                 },
                 e => reject(e)
             )
