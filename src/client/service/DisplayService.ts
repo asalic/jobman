@@ -90,7 +90,7 @@ export default class DisplayService {
                     }
                 }
             ))
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));        
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));        
     }
 
     public images(): void {
@@ -121,7 +121,7 @@ export default class DisplayService {
                     t.addRows(r.payload?.data);
                     t.printTable();
                 }))
-                .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+                .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
     }
 
     public imageDetails(props: ImageDetailsProps): void {
@@ -133,16 +133,16 @@ export default class DisplayService {
           });
         this.km.imageDescription(props)
             .then(r => this.simpleMsg(r,  () => console.log(marked(r.payload ?? "&lt;__No description available__&gt;"))))
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
 
     }
 
     public submit(props: SubmitProps): void {
         this.km.submit(props)
             .then(r => {
-                this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job successfully submitted.", null));
+                    this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job successfully submitted.", null));
             })
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message ?? String(e), null)));
     }
     
 
@@ -198,20 +198,20 @@ export default class DisplayService {
                     t.addRows(r.payload?.data);
                     t.printTable();
                 }))
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
     }
 
     public details(props: DetailsProps): void {
         this.km.details(props)
             .then(r => this.simpleMsg(r, () => console.dir(r.payload, {depth: null})))
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
 
     }
 
     public log(props: LogProps): void {
         this.km.log(props)
             .then(r => this.simpleMsg(r, () => console.log("----Log begin----\n\n", "\x1b[36m", r.payload?.stdOut ?? "", "\x1b[0m", "\n----Log end----")))
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
 
     }
 
@@ -220,7 +220,7 @@ export default class DisplayService {
             .then(r => {
                 this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job(s) delete intent submitted successfully. Kubernetes may take a while until it actually performs the operations.", null));
             })
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
     }
 
     public resourcesFlavors(): void {
@@ -283,7 +283,7 @@ export default class DisplayService {
                     console.log("**First value represents the total count of NVIDIA GPUS, followed by that of AMD GPUs, and, finally, Intel's");
                     console.log("***In hours")
                 }))
-            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
+            .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
     }
 
     protected simpleMsg(op: KubeOpReturn<any>, displayFunc: SimpleMsgCallbFunction | undefined = undefined): void {

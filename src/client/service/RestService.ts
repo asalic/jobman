@@ -89,9 +89,9 @@ export default class RestService {
                         resolve(new KubeOpReturn(KubeOpReturnStatus.Success, undefined, resp));
                     } else {
                         if (resp) {
-                            resolve(new KubeOpReturn(KubeOpReturnStatus.Error, resp["message"], null));
+                            reject(resp);
                         } else{
-                            resolve(new KubeOpReturn(KubeOpReturnStatus.Error, txt, null));
+                            reject(txt);
 
                         }                        
                     }
