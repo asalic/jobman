@@ -38,6 +38,7 @@ import EJobStatus from '../../common/model/EJobStatus.js';
 import Util from '../../common/Util.js';
 import type JobDetails from '../../common/model/JobDetails.js';
 import type Page from '../../common/model/Page.js';
+import type JobLog from '../../common/model/JobLog.js';
 
 
 export default class KubeManager {
@@ -314,7 +315,7 @@ export default class KubeManager {
     }
 
     public async log(props: LogProps, userName: string): 
-            Promise<KubeOpReturn<string | null>>{
+            Promise<KubeOpReturn<JobLog | null>>{
         try {
             if (props.jobName) {
                 const j: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
@@ -327,7 +328,8 @@ export default class KubeManager {
                         console.log(`Getting log for pod '${podName}', user '${userName}' in namespace '${ns}'`);
                         //console.dir((await this.k8sCoreApi.readNamespacedPodStatus(podName, this.getNamespace())).body.status?.conditions);
                         const log: string = (await this.k8sCoreApi.readNamespacedPodLog(podName, ns)).body;
-                        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? "<Empty Log>" :  log);
+                        return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? 
+                            { stdOut: "" } : { stdOut: log });
                     } else {
                         return new KubeOpReturn(KubeOpReturnStatus.Error, `Unable to determine the pod name for job '${props.jobName}'.`, null);
                     }

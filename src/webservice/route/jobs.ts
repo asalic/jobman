@@ -9,6 +9,7 @@ import type SubmitProps from '../../common/model/args/SubmitProps.js';
 import type JobDetails from '../../common/model/JobDetails.js';
 import type JobInfo from '../../common/model/JobInfo.js';
 import type Page from '../../common/model/Page.js';
+import type JobLog from '../../common/model/JobLog.js';
 
 
 const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
@@ -36,7 +37,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
   });
 
   routerObj.get('/:jobName/logs/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<string | null>(req, res, next, oidcAuth, km.log.bind(km, { jobName: req.params["jobName"] ?? ""}));
+    commonRequest<JobLog | null>(req, res, next, oidcAuth, km.log.bind(km, { jobName: req.params["jobName"] ?? ""}));
   });
 
   return routerObj;

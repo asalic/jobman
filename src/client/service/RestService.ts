@@ -13,6 +13,7 @@ import type JobInfo from "../../common/model/JobInfo.js";
 import type Page from "../../common/model/Page.js";
 import type ImageDetails from "../../common/model/ImageDetails.js";
 import type KubeResourcesFlavor from "../../common/model/KubeResourcesFlavor.js";
+import type JobLog from "../../common/model/JobLog.js";
 
 export default class RestService {
 
@@ -49,8 +50,8 @@ export default class RestService {
         return this.commonCall<JobDetails | null>(`/jobs/${props.jobName}/`, "GET");
     }
 
-    public log(props: LogProps): Promise<KubeOpReturn<string | null>> {
-        return this.commonCall<string | null>(`/jobs/${props.jobName}/logs/`, "GET");
+    public log(props: LogProps): Promise<KubeOpReturn<JobLog | null>> {
+        return this.commonCall<JobLog>(`/jobs/${props.jobName}/logs/`, "GET");
     }
 
     public delete(props: DeleteProps): Promise<KubeOpReturn<null>> {

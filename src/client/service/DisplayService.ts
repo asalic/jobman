@@ -210,7 +210,7 @@ export default class DisplayService {
 
     public log(props: LogProps): void {
         this.km.log(props)
-            .then(r => this.simpleMsg(r, () => console.log("----Log begin----\n\n", "\x1b[36m", r.payload, "\x1b[0m", "\n----Log end----")))
+            .then(r => this.simpleMsg(r, () => console.log("----Log begin----\n\n", "\x1b[36m", r.payload?.stdOut ?? "", "\x1b[0m", "\n----Log end----")))
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null)));
 
     }
