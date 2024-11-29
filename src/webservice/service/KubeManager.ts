@@ -128,8 +128,7 @@ export default class KubeManager {
             // } else {            
             //console.log(`Parameters sent to the job's container: ${JSON.stringify(props.command)}`);
             const kr: KubeResourcesFlavor = KubeResourcesPrep.getKubeResources(this.settings, props.resources);
-            const uuid: string = uuidv4()
-            const jn: string = userId + "-" + (props.jobName ?? uuid);
+            const jn: string = this.getInternalJobName(userId, props.jobName);
             const imageNmTag: string | undefined = props.image ?? this.settings.job.defaultImage;
             if (!imageNmTag || imageNmTag.length === 0) {
                 throw new ParameterException(
@@ -189,7 +188,7 @@ export default class KubeManager {
                         //...volumes && {volumes},
                         containers: [
                             {
-                                name: `container-${uuid}`,
+                                name: `container-${jn}`,
                                 image,
                                 ...env && { env },
                                 //...command && {command},
@@ -229,7 +228,7 @@ export default class KubeManager {
                 for (const e of r.payload) {
                     const jn = e.metadata?.name;
                     if (jn) {
-                        res.push({ name: jn,
+                        res.push({ name: this.getJobName(userId, jn),
                             uid: e.metadata?.uid,
                             status: await this.getStatusJob(jn, e.status, userId),
                             dateLaunched: e.metadata?.creationTimestamp?.getTime() ?? null,
@@ -242,7 +241,7 @@ export default class KubeManager {
                         - (a.dateLaunched ?? 0)});
                 return new KubeOpReturn(KubeOpReturnStatus.Success, r.message, { data: res, size: res.length, total: res.length, skip: 0 });
             } else {
-                return new KubeOpReturn(KubeOpReturnStatus.Success, "Empty jobs", { data: [], size: 0, total: 0, skip: 0 });
+                return new KubeOpReturn(KubeOpReturnStatus.Success, "Empty jobs list", { data: [], size: 0, total: 0, skip: 0 });
             }
         } catch (e) {
             return this.handleKubeOpsError(e);
@@ -295,7 +294,8 @@ export default class KubeManager {
 
     public async details(props: DetailsProps, userId: string): Promise<KubeOpReturn<JobDetails | null>> {
         if (props.jobName) {
-            const r: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
+            const jn = this.getInternalJobName(userId, props.jobName);
+            const r: V1Job = (await this.k8sApi.readNamespacedJob(jn, this.getNamespace())).body;
                 if (this.userOwnsJob(userId, r)) {
                     const jd: JobDetails = { name: r.metadata?.name ?? "<Unknown>",
                         uid: r.metadata?.uid,
@@ -318,11 +318,12 @@ export default class KubeManager {
             Promise<KubeOpReturn<JobLog | null>>{
         try {
             if (props.jobName) {
-                const j: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
+                const jn = this.getInternalJobName(userId, props.jobName);
+                const j: V1Job = (await this.k8sApi.readNamespacedJob(jn, this.getNamespace())).body;
                 if (this.userOwnsJob(userId, j)) {
-                    const podName: string | undefined =  (await this.getJobPodInfo(props.jobName, userId))?.metadata?.name;
+                    const podName: string | undefined =  (await this.getJobPodInfo(jn, userId))?.metadata?.name;
 
-                    //console.dir((await this.k8sApi.readNamespacedJobStatus(props.jobName, this.getNamespace())).body.status);
+                    //console.dir((await this.k8sApi.readNamespacedJobStatus(jn, this.getNamespace())).body.status);
                     if (podName) {
                         const ns: string = this.getNamespace();
                         console.log(`Getting log for pod '${podName}', user '${userId}' in namespace '${ns}'`);
@@ -353,7 +354,8 @@ export default class KubeManager {
         try {
 
             if (props.jobName) {
-                const r: DeleteJobHandlerResult = await this.deleteJobHandler(props.jobName, userId);
+                const jn = this.getInternalJobName(userId, props.jobName);
+                const r: DeleteJobHandlerResult = await this.deleteJobHandler(jn, userId);
                 return new KubeOpReturn(r.status,  r.message, null);
             } else if (props.all) {
                 const  r: KubeOpReturn<V1Job[]> = await this.getJobsList(this.getNamespace(), userId);
@@ -372,7 +374,7 @@ export default class KubeManager {
                     }
                     const msgs: string[] = [];
                     if (idsStatus.has(KubeOpReturnStatus.Success)) {
-                        msgs.push(`Jobs ${idsStatus.get(KubeOpReturnStatus.Success)?.map(e => "'" + e + "'").join(", ")} have been successfully deleted`);
+                        msgs.push(`Deletion intents have been successfully submitted for the following jobs: ${idsStatus.get(KubeOpReturnStatus.Success)?.map(e => "'" + e + "'").join(", ")}. It may take a while until the job(s) is/are actually deleted by Kubernetes."`);
                     } 
 
                     if (idsStatus.has(KubeOpReturnStatus.Error)) {
@@ -515,98 +517,6 @@ export default class KubeManager {
     protected async getConfigmap(configMapName: string, namespace?: string): Promise<V1ConfigMap> {
             return (await this.k8sCoreApi.readNamespacedConfigMap(configMapName, namespace ?? this.getNamespace())).body;
     }
-
-    // protected async prepareJobVolumes(): Promise<[V1Volume[] | undefined, V1VolumeMount[] | undefined]> {
-    //     if (this.settings.job.userConfigmap) {
-    //         const userConfigmap: V1ConfigMap = await this.getConfigmap(this.settings.job.userConfigmap );
-    //         if (userConfigmap && this.settings.job.mountPoints) {
-    //             const vs: V1Volume[] = [
-    //                 {
-    //                     name: "datalake",
-    //                     cephfs: this.defJobVolume(userConfigmap,
-    //                                 userConfigmap.data?.["datalake.path"] ?? "/", true)
-    //                 },
-    //                 {
-    //                     name: "home",
-    //                     cephfs: this.defJobVolume(userConfigmap, 
-    //                         userConfigmap.data?.["persistent_home.path"] ?? "/", false)
-    //                 },
-    //                 {
-    //                     name: "shared-folder",
-    //                     cephfs: this.defJobVolume(userConfigmap, 
-    //                         userConfigmap.data?.["persistent_shared_folder.path"] ?? "/", false)
-    //                 }
-    //             ];
-    //             const vms: V1VolumeMount[] = [
-    //                 {
-    //                     name: "datalake",
-    //                     mountPath: this.settings.job.mountPoints.datalake
-    //                 },
-    //                 {
-    //                     name: "home",
-    //                     mountPath: this.settings.job.mountPoints.persistent_home
-    //                 },
-    //                 {
-    //                     name: "shared-folder",
-    //                     mountPath: this.settings.job.mountPoints.persistent_shared_folder
-    //                 }
-    //             ];
-    //             // Mount datasets
-    //             // const dirs: string[] = fs.readdirSync(this.settings.job.mountPoints.datasets)
-    //             //     .filter((f: any) => fs.statSync(path.join(this.settings.job.mountPoints?.datasets ?? "", f)).isDirectory());
-    //             // Read the list of datasets from file
-    //             let dirs: string[] | undefined = undefined;
-    //             if (this.settings.job.datasetsList && this.settings.job.datasetsList.length > 0) {
-    //                 let ids: string | undefined = undefined;
-    //                 try {
-    //                     ids = fs.readFileSync(this.settings.job.datasetsList, "ascii");
-                            
-    //                 } catch (e) {
-    //                     //throw new ParameterException(
-    //                         this.logger.warn(`Cannot open the datasets list at ${this.settings.job.datasetsList}. If you don't intend to mount access any dataset please remove the "datasetsList" option in settings -> job`
-    //                         );
-    //                 }
-    //                 dirs = ids?.replaceAll((/ |\r\n|\n|\r/gm), "")
-    //                     ?.split(",").filter(e => e.length > 0);
-    //             }
-
-    //             const pt: string | undefined = userConfigmap.data?.["datasets.path"];
-    //             if (pt) {
-    //                 if (dirs) {
-    //                     if (dirs.length > 0) {
-    //                         for (const dir of dirs) {
-    //                                 vs.push({
-    //                                     name: dir,
-    //                                     cephfs: this.defJobVolume(userConfigmap,  path.join(pt, dir), true)
-
-    //                                 });
-    //                                 vms.push({
-    //                                     name: dir,
-    //                                     mountPath: path.join(this.settings.job.mountPoints.datasets, dir)
-    //                                 });
-    //                         }
-    //                     } else {
-    //                         this.logger.warn("Empty 'datasets.txt', no dataset will be mounted");
-    //                     }
-    //                 } else {
-    //                     this.logger.warn("The list of datasets to be mounted is empty. If this is not by design, please ensure that the path defined in settings for \"datasetsList\" is correct, and the file has the correct format/not empty.")   
-    //                 }
-    //             } else {
-    //                 throw new ParameterException(`Missing 'datasets.path' entry in user configmap '${this.settings.job.userConfigmap}'`);
-    //             }
-    //             return [vs, vms];
-    //         } 
-    //     }
-    //     return [undefined, undefined];
-    // }
-
-    // protected defJobVolume(userConfigmap: V1ConfigMap, path: string, readOnly: boolean): V1CephFSVolumeSource {
-    //     const monitors: string[] =  userConfigmap.data?.["ceph.monitors"]?.split(",") 
-    //         ?? (userConfigmap.data?.["ceph.monitor"] ? [userConfigmap.data?.["ceph.monitor"]] : null) ?? [];
-    //     const user: string = userConfigmap.data?.["ceph.user"] ?? "";
-        
-    //     return {monitors, user, secretRef: {name: "ceph-auth"}, readOnly, path};
-    // }
     
     protected async getJobPodInfo(jobName: string, userId: string): Promise<V1Pod | undefined> {
         const r: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
@@ -728,6 +638,14 @@ export default class KubeManager {
 
     protected userOwnsJob(userId: string, job: V1Job): boolean {
         return job.metadata?.annotations?.[this.settings.job.userIdAnnotation] === userId;
+    }
+
+    protected getInternalJobName(userId: string, jobName?: string | null | undefined):  string {
+        return userId + "--" + (jobName ?? uuidv4());
+    }
+
+    protected getJobName(userId: string, internalJobName: string): string {
+        return internalJobName.substring(userId.length + 2);
     }
 
     // protected updateQueueResultJobStats(qrStats: QueueResultJobStats, kubeStats: V1JobStatus) {

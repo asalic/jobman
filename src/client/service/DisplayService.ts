@@ -218,7 +218,7 @@ export default class DisplayService {
     public delete(props: DeleteProps): void {
         this.km.delete(props)
             .then(r => {
-                this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job(s) delete intent submitted successfully. Kubernetes may take a while until it actually performs the operations.", null));
+                this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job(s) delete intent(s) submitted successfully. It may take a while until Kubernetes performs the operation(s).", null));
             })
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error,  e.message ?? String(e), null)));
     }

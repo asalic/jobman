@@ -37,7 +37,8 @@ Check the full description of comand line arguments in the [usage.md](usage.md) 
 
 When you submit a job, you can optionally specify a name. 
 If you don't, **jobman** will generate a UUID v4 and use it for generating the name. 
-For both cases, the final name will be prefixed by your username followed by a dash (-).
+
+IMPORTANT: for both cases, the internal job name will be prefixed by your user ID (i.e. the "sub" field in OIDC) followed by two dashes (--). DO NOT USE this name in your commands when you need to pass the name as a parameter. This is fo your information only and sometimes **jobman** will use this name.
 
 ## Workflow and examples
 

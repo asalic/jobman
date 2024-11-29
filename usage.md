@@ -25,17 +25,17 @@ jobman [`<jobman_options>`] [`<command>`] [`<command_options>`]
   -  -i/--image <image_name>:<tag>:  required/optional*; the image name followed by a valid tag that will be used for the job; *optional when a default value appears in settings
   -  -e/--env <env_var_name>=<env_var_value>: optional; Define an environemnt variable in the job you are about to launch; this parameter can appear multiple times, each occurence counting as a different variable
   -  -a/--annotations <string_json>: optional; A string representation of a JSON object with one or more key/value (both string) pairs that are added to the Kubernetes job's metadata->annotations
-  -  -j/--job-name <job_name>:  optional; the name of the kubernetes job ["job-<UUID_generated_at_launch_time>"]
+  -  -j/--job-name <job_name>:  optional; the name of the kubernetes job (there is also an internal name that is your user ID followed by double dash prepended to this name) ["<UUID_generated_at_launch_time>"]
   -  -r/--resources-flavor <resources_flavor_name>: required/optional*; either a JSON string with the definition of a resources flavor, or a path to a JSON file containing a resources flavor, or a name of a predefined resources flavor already defined in the application's settings; *optional when there is a default flavor name set in the application settings
   -  --dry-run: optional; flag; if set the job is not sent to Kubernetes, its content is dumped on the screen [false]
   -  --: required/optional*; separator between the submit command options and the command or args passed to the Kubernetes job; the string that follows the double dash are sent to the Kubernetes job either as args or as command (if the 'command' flag is used); *optional when you don't want to pass command/args to the Kubernetes job
 
 `<command_options>` for the **details** command can be:
-  -  -j/--job-name <job_name>:  required; the name of the job for which you want to get the details; 
+  -  -j/--job-name <job_name>:  required; the name of the job for which you want to get the details (do not use the internal job name); 
     
 `<command_options>` for the **logs** command can be:
-  -  -j/--job-name <job_name>:  required; the name of the job for which you want to pull the log
+  -  -j/--job-name <job_name>:  required; the name of the job for which you want to pull the log (do not use the internal job name);
 
 `<command_options>` for the **delete** command can be:
-  -  -j/--job-name <job_name>:  required/disallowed*; the name of the job that you want to delete; *disallowed when "--all" passed
+  -  -j/--job-name <job_name>:  required/disallowed*; the name of the job that you want to delete (do not use the internal job name); *disallowed when "--all" passed
   -  --all: required/disallowed*; removes ALL jobs (independ of their status), required when "--job-name" not specified, *disallowed when the aforementioned is set
