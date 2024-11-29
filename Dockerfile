@@ -16,6 +16,7 @@ RUN cd /opt/jobman/ \
     && npm install \
     && npx tsc \
     && ln -s /opt/jobman/bin/jobman-webservice /usr/bin/ \
+    && chmod +x /opt/jobman/bin/jobman-webservice /usr/bin/ \
     && addgroup jobman --gid 1001 && useradd -m -u 1001 -g jobman jobman
 
 ENV SETTINGS_FILE /opt/jobman/src/webservice/settings.json
