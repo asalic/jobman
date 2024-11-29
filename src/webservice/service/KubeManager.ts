@@ -59,7 +59,7 @@ export default class KubeManager {
         this.watch = new Watch(this.clusterConfig);
     }
 
-    public async queue(userName: string):  Promise<KubeOpReturn<QueueResultDisplay | null>> {
+    public async queue(userId: string):  Promise<KubeOpReturn<QueueResultDisplay | null>> {
         try {
 
             const cm: V1ConfigMap = await this.getConfigmap(this.settings.jobsQueue.configmap, this.settings.jobsQueue.namespace);
@@ -119,7 +119,7 @@ export default class KubeManager {
         }
     }
 
-    public async submit(props: SubmitProps, userName: string): Promise<KubeOpReturn<null>> {
+    public async submit(props: SubmitProps, userId: string): Promise<KubeOpReturn<null>> {
         try {
             // if (!props.image) {
             //     return new KubeOpReturn(KubeOpReturnStatus.Error,
@@ -129,7 +129,7 @@ export default class KubeManager {
             //console.log(`Parameters sent to the job's container: ${JSON.stringify(props.command)}`);
             const kr: KubeResourcesFlavor = KubeResourcesPrep.getKubeResources(this.settings, props.resources);
             const uuid: string = uuidv4()
-            const jn: string = userName + "-" + (props.jobName ?? uuid);
+            const jn: string = userId + "-" + (props.jobName ?? uuid);
             const imageNmTag: string | undefined = props.image ?? this.settings.job.defaultImage;
             if (!imageNmTag || imageNmTag.length === 0) {
                 throw new ParameterException(
@@ -156,7 +156,7 @@ export default class KubeManager {
             //console.log("Preparing volumes...");
             //const [volumes, volumeMounts] = await this.prepareJobVolumes();
             const job: V1Job = new V1Job();
-            const annotations = this.getAnnotations(kr, props, userName);
+            const annotations = this.getAnnotations(kr, props, userId);
             job.metadata = {
                 name: jn,
                 namespace,
@@ -209,7 +209,7 @@ export default class KubeManager {
             } else {
                 const r = await this.k8sApi.createNamespacedJob(namespace, job);
                 return new KubeOpReturn(this.getStatusKubeOp(r.response.statusCode), 
-                    `Job named '${jn}' created successfully by user '${userName}'`, null);
+                    `Job named '${jn}' created successfully by user '${userId}'`, null);
 
             }
             //}
@@ -219,9 +219,9 @@ export default class KubeManager {
         }
     }
 
-    public async list(userName: string): Promise<KubeOpReturn<Page<JobInfo> | null>> {
+    public async list(userId: string): Promise<KubeOpReturn<Page<JobInfo> | null>> {
         try {
-            const r: KubeOpReturn<V1Job[]> = (await this.getJobsList(this.getNamespace(), userName));
+            const r: KubeOpReturn<V1Job[]> = (await this.getJobsList(this.getNamespace(), userId));
             // const jobsQueue: V1ConfigMap = await this.getConfigmap(
             //     this.settings.jobsQueue.configmap, this.settings.jobsQueue.namespace);
             if (r.payload) {
@@ -231,7 +231,7 @@ export default class KubeManager {
                     if (jn) {
                         res.push({ name: jn,
                             uid: e.metadata?.uid,
-                            status: await this.getStatusJob(jn, e.status, userName),
+                            status: await this.getStatusJob(jn, e.status, userId),
                             dateLaunched: e.metadata?.creationTimestamp?.getTime() ?? null,
                             position: 0,//jobsQueue?.data?.["jobs"]?.find(j => j.name === jn && j.user === this.getUsername())?.
                             flavor: e.metadata?.annotations?.["chaimeleon.eu/jobResourcesFlavor"] ?? "-"
@@ -249,7 +249,7 @@ export default class KubeManager {
         }
     }
 
-    public async imageDetails(props: ImageDetailsProps, userName: string): Promise<KubeOpReturn<string | null>> {
+    public async imageDetails(props: ImageDetailsProps, userId: string): Promise<KubeOpReturn<string | null>> {
         if (!props.image) {
             return new KubeOpReturn(KubeOpReturnStatus.Error, "Please specify an image name", null);
         }
@@ -279,7 +279,7 @@ export default class KubeManager {
         return new KubeOpReturn(KubeOpReturnStatus.Error, `No image with name '${props.image}' found.`, null);
     }
 
-    public async images(userName: string): Promise<KubeOpReturn<Page<ImageDetails> | null>> {
+    public async images(userId: string): Promise<KubeOpReturn<Page<ImageDetails> | null>> {
         const imageDetails: ImageDetails[] = [];
         for (const hp of this.settings.harborProjects) {
             const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(hp);
@@ -293,13 +293,13 @@ export default class KubeManager {
             total: imageDetails.length, skip: 0} );
     }
 
-    public async details(props: DetailsProps, userName: string): Promise<KubeOpReturn<JobDetails | null>> {
+    public async details(props: DetailsProps, userId: string): Promise<KubeOpReturn<JobDetails | null>> {
         if (props.jobName) {
             const r: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
-                if (this.userOwnsJob(userName, r)) {
+                if (this.userOwnsJob(userId, r)) {
                     const jd: JobDetails = { name: r.metadata?.name ?? "<Unknown>",
                         uid: r.metadata?.uid,
-                        status: await this.getStatusJob(r.metadata?.name ?? "", r.status, userName),
+                        status: await this.getStatusJob(r.metadata?.name ?? "", r.status, userId),
                         dateLaunched: r.metadata?.creationTimestamp?.getTime() ?? null,
                         position: 0,//jobsQueue?.data?.["jobs"]?.find(j => j.name === jn && j.user === this.getUsername())?.
                         flavor: r.metadata?.annotations?.["chaimeleon.eu/jobResourcesFlavor"] ?? "-"
@@ -314,18 +314,18 @@ export default class KubeManager {
         }
     }
 
-    public async log(props: LogProps, userName: string): 
+    public async log(props: LogProps, userId: string): 
             Promise<KubeOpReturn<JobLog | null>>{
         try {
             if (props.jobName) {
                 const j: V1Job = (await this.k8sApi.readNamespacedJob(props.jobName, this.getNamespace())).body;
-                if (this.userOwnsJob(userName, j)) {
-                    const podName: string | undefined =  (await this.getJobPodInfo(props.jobName, userName))?.metadata?.name;
+                if (this.userOwnsJob(userId, j)) {
+                    const podName: string | undefined =  (await this.getJobPodInfo(props.jobName, userId))?.metadata?.name;
 
                     //console.dir((await this.k8sApi.readNamespacedJobStatus(props.jobName, this.getNamespace())).body.status);
                     if (podName) {
                         const ns: string = this.getNamespace();
-                        console.log(`Getting log for pod '${podName}', user '${userName}' in namespace '${ns}'`);
+                        console.log(`Getting log for pod '${podName}', user '${userId}' in namespace '${ns}'`);
                         //console.dir((await this.k8sCoreApi.readNamespacedPodStatus(podName, this.getNamespace())).body.status?.conditions);
                         const log: string = (await this.k8sCoreApi.readNamespacedPodLog(podName, ns)).body;
                         return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? 
@@ -349,19 +349,19 @@ export default class KubeManager {
         }
     }
 
-    public async delete(props: DeleteProps, userName: string): Promise<KubeOpReturn<null>> {
+    public async delete(props: DeleteProps, userId: string): Promise<KubeOpReturn<null>> {
         try {
 
             if (props.jobName) {
-                const r: DeleteJobHandlerResult = await this.deleteJobHandler(props.jobName, userName);
+                const r: DeleteJobHandlerResult = await this.deleteJobHandler(props.jobName, userId);
                 return new KubeOpReturn(r.status,  r.message, null);
             } else if (props.all) {
-                const  r: KubeOpReturn<V1Job[]> = await this.getJobsList(this.getNamespace(), userName);
+                const  r: KubeOpReturn<V1Job[]> = await this.getJobsList(this.getNamespace(), userId);
                 if (r.payload && r.payload.length > 0) {
                     const idsStatus: Map<KubeOpReturnStatus, string[]> = new Map<KubeOpReturnStatus, string[]>()
                     for (const j of r.payload) {
                         if (j.metadata?.name) {
-                            const r = await this.deleteJobHandler(j.metadata?.name, userName);
+                            const r = await this.deleteJobHandler(j.metadata?.name, userId);
                             let ids: string[] | undefined = idsStatus.get(r.status);
                             if (!ids) {
                                 ids = [];
@@ -398,7 +398,7 @@ export default class KubeManager {
         }
     }
 
-    public resourcesFlavors(userName: string): KubeOpReturn<Page<KubeResourcesFlavor> | null> {
+    public resourcesFlavors(userId: string): KubeOpReturn<Page<KubeResourcesFlavor> | null> {
         if (this.settings.job.resources.predefined && this.settings.job.resources.predefined.length > 0) {
             return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, 
                 { data: this.settings.job.resources.predefined,
@@ -472,13 +472,13 @@ export default class KubeManager {
 
     }
 
-    protected getAnnotations(kr: KubeResourcesFlavor, props: SubmitProps, userName: string): { [key: string]: string; } | null {
+    protected getAnnotations(kr: KubeResourcesFlavor, props: SubmitProps, userId: string): { [key: string]: string; } | null {
 
         const r = Object.create(null);
         if (this.settings.job.resources.label) {
             r[this.settings.job.resources.label] = kr.name;
         }
-        r[this.settings.job.userNameAnnotation] = userName;
+        r[this.settings.job.userIdAnnotation] = userId;
         Object.assign(r, Util.getAnnotationsFromSettings(this.settings.job.annotations));
         if (props.annotations) {
                 Object.assign(r, JSON.parse(props.annotations));   
@@ -487,12 +487,12 @@ export default class KubeManager {
         return Object.keys(r).length > 0 ? r : null;
     } 
 
-    protected async deleteJobHandler(jobName: string, userName: string): Promise<DeleteJobHandlerResult> {
+    protected async deleteJobHandler(jobName: string, userId: string): Promise<DeleteJobHandlerResult> {
         let message = "Undefined";
         let status: KubeOpReturnStatus = KubeOpReturnStatus.Unknown;
         const j: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
-        if (this.userOwnsJob(userName, j)) {
-            log.info(`Deleting job named '${jobName}' for user '${userName}' in namespace '${this.getNamespace()}'`);
+        if (this.userOwnsJob(userId, j)) {
+            log.info(`Deleting job named '${jobName}' for user '${userId}' in namespace '${this.getNamespace()}'`);
             const deleteObj: V1DeleteOptions = {
                 apiVersion: 'v1',
                 propagationPolicy: 'Background'
@@ -608,9 +608,9 @@ export default class KubeManager {
     //     return {monitors, user, secretRef: {name: "ceph-auth"}, readOnly, path};
     // }
     
-    protected async getJobPodInfo(jobName: string, userName: string): Promise<V1Pod | undefined> {
+    protected async getJobPodInfo(jobName: string, userId: string): Promise<V1Pod | undefined> {
         const r: V1Job = (await this.k8sApi.readNamespacedJob(jobName, this.getNamespace())).body;
-        if (this.userOwnsJob(userName,r)) {
+        if (this.userOwnsJob(userId,r)) {
             const cUid: string | undefined = r?.metadata?.labels?.["controller-uid"];
             if (cUid) {
                 const podLblSel: string = "controller-uid=" + cUid;
@@ -637,20 +637,20 @@ export default class KubeManager {
         }
     }
 
-    protected async getJobsList(namespace: string, userName: string): Promise<KubeOpReturn<V1Job[]>> {
+    protected async getJobsList(namespace: string, userId: string): Promise<KubeOpReturn<V1Job[]>> {
         const res =  (await this.k8sApi.listNamespacedJob(namespace))//, undefined, undefined, undefined, 
 
-        //     `metadata.annotations.${this.settings.job.userNameAnnotation}=${userName}`
+        //     `metadata.annotations.${this.settings.job.userIdAnnotation}=${userId}`
         // );
-        const r: V1Job[] = res.body.items.filter((j:V1Job) => this.userOwnsJob(userName, j));
+        const r: V1Job[] = res.body.items.filter((j:V1Job) => this.userOwnsJob(userId, j));
         return new KubeOpReturn(this.getStatusKubeOp(res.response.statusCode), res.response.statusMessage, r);
     }
 
-    protected async getStatusJob(jobName: string, stat: V1JobStatus | undefined, userName: string): Promise<EJobStatus>  {
+    protected async getStatusJob(jobName: string, stat: V1JobStatus | undefined, userId: string): Promise<EJobStatus>  {
         if (stat) {
             if (stat.failed === undefined && stat.succeeded === undefined) {
                 // we have to check what the pod is doing
-                const podPhase: string | undefined =  (await this.getJobPodInfo(jobName, userName))?.status?.phase?.toLowerCase();
+                const podPhase: string | undefined =  (await this.getJobPodInfo(jobName, userId))?.status?.phase?.toLowerCase();
                 switch (podPhase) {
                     case "pending": return EJobStatus.Pending;
                     case "running": return EJobStatus.Running;
@@ -726,8 +726,8 @@ export default class KubeManager {
         return fetch(url, init);
     }
 
-    protected userOwnsJob(userName: string, job: V1Job): boolean {
-        return job.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userName;
+    protected userOwnsJob(userId: string, job: V1Job): boolean {
+        return job.metadata?.annotations?.[this.settings.job.userIdAnnotation] === userId;
     }
 
     // protected updateQueueResultJobStats(qrStats: QueueResultJobStats, kubeStats: V1JobStatus) {
