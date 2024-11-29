@@ -1,0 +1,1271 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Jobman web service",
+    "termsOfService": "https://chaimeleon-test.grycap.i3m.upv.es/dataset-service/web/terms-and-conditions.pdf",
+    "license": {
+      "name": "Apache 2.0",
+      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
+    },
+    "version": "1"
+  },
+  "tags": [
+    {
+      "name": "jobs",
+      "description": "Manage jobs on the Kube cluster"
+    },
+    {
+      "name": "queue",
+      "description": "Information related to the queue comprising all jobs launched on the cluster"
+    },
+    {
+      "name": "images",
+      "description": "Information related to available Docker images that can be used by a jobman to run a job"
+    },
+    {
+      "name": "resources-flavors",
+      "description": "Information about the existing predefined flavors of computational resources (CPU/RAM/GPU) that can be used by a job"
+    }
+  ],
+  "paths": {
+    "/jobs/": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get all your jobs",
+        "description": "Get all your jobs",
+        "operationId": "getJobs",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {},
+                        "size": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "skip": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "uid": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "PENDING",
+                                  "PENDING_ERROR",
+                                  "RUNNING",
+                                  "SUCCESS",
+                                  "ERROR",
+                                  "UNKNOWN"
+                                ]
+                              },
+                              "dateLaunched": {
+                                "type": "number"
+                              },
+                              "position": {
+                                "type": "number"
+                              },
+                              "flavor": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Submit a new job",
+        "operationId": "postJob",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "description": "Information required for the submission of a new job for execution",
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "datasetsList"
+                ],
+                "properties": {
+                  "jobName": {
+                    "type": "string"
+                  },
+                  "image": {
+                    "type": "string"
+                  },
+                  "resources": {
+                    "type": "string"
+                  },
+                  "commandArgs": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    }
+                  },
+                  "dryRun": {
+                    "type": "boolean"
+                  },
+                  "annotations": {
+                    "type": "string"
+                  },
+                  "datasetsList": {
+                    "type": "string"
+                  },
+                  "env": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "name": {
+                          "type": "string"
+                        },
+                        "value": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful operation"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Delete all jobs owned by the user identified by the API token",
+        "operationId": "deleteAllJobs",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{jobName}/": {
+      "delete": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Delete a job by name",
+        "operationId": "deleteJobByName",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "description": "The name of the job you want to delete. It is always prefixed with the name of the user followed by adash followed by the name you used during submission or given automatically if none was specified",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Successful operation"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get a job by name",
+        "operationId": "getJobByName",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "description": "The name of the job you want to delete. It is always prefixed with the name of the user followed by adash followed by the name you used during submission or given automatically if none was specified",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "uid": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "Pending",
+                        "Pending - error",
+                        "Running",
+                        "Succeeded",
+                        "Failed",
+                        "Unknown"
+                      ]
+                    },
+                    "dateLaunched": {
+                      "type": "number"
+                    },
+                    "position": {
+                      "type": "number"
+                    },
+                    "flavor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/jobs/{jobName}/logs/": {
+      "get": {
+        "tags": [
+          "jobs"
+        ],
+        "summary": "Get the logs of a job (its pod) using the name of the job",
+        "operationId": "getJobLogsByName",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "jobName",
+            "in": "path",
+            "description": "The name of the job you want to delete. It is always prefixed with the name of the user followed by adash followed by the name you used during submission or given automatically if none was specified",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "stdOut": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/queue/": {
+      "get": {
+        "tags": [
+          "queue"
+        ],
+        "summary": "Get the queue of all jobs and all users",
+        "operationId": "getQueue",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "result": {
+                      "type": "object",
+                      "additionalProperties": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "flavor": {
+                            "type": "string"
+                          },
+                          "cpu": {
+                            "type": "string"
+                          },
+                          "memory": {
+                            "type": "string"
+                          },
+                          "gpu": {
+                            "type": "number"
+                          },
+                          "totalPending": {
+                            "type": "number"
+                          },
+                          "totalRunning": {
+                            "type": "number"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Get a list of available images to be used by your job",
+        "operationId": "getImages",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {},
+                        "size": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "skip": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "tags": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "desc": {
+                                "type": "string"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/images/{imageName}/description/": {
+      "get": {
+        "tags": [
+          "images"
+        ],
+        "summary": "Get the description of an image by its name",
+        "operationId": "getImageByName",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "imageName",
+            "in": "path",
+            "description": "The name of the image",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/resources-flavors/": {
+      "get": {
+        "tags": [
+          "resources-flavors"
+        ],
+        "summary": "Get a list of all predefined resources flavors available",
+        "operationId": "getResourcesFlavors",
+        "parameters": [
+          {
+            "name": "authorization",
+            "in": "header",
+            "description": "\"ApiToken \\<token\\>\" or \"Bearer \\<token\\>\"",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful operation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {},
+                        "size": {
+                          "type": "number"
+                        },
+                        "total": {
+                          "type": "number"
+                        },
+                        "skip": {
+                          "type": "number"
+                        }
+                      }
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "data": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "name": {
+                                "type": "string"
+                              },
+                              "description": {
+                                "type": "string"
+                              },
+                              "resources": {
+                                "type": "object",
+                                "properties": {
+                                  "requests": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "limits": {
+                                    "type": "object",
+                                    "additionalProperties": {
+                                      "type": "string"
+                                    }
+                                  }
+                                }
+                              },
+                              "maxRunTime": {
+                                "type": "integer"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "number"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          },
+          "status": {
+            "type": "number"
+          }
+        }
+      },
+      "Page": {
+        "type": "object",
+        "properties": {
+          "data": {},
+          "size": {
+            "type": "number"
+          },
+          "total": {
+            "type": "number"
+          },
+          "skip": {
+            "type": "number"
+          }
+        }
+      },
+      "Page-KubeResourcesFlavor": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "data": {},
+              "size": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "skip": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "resources": {
+                      "type": "object",
+                      "properties": {
+                        "requests": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        },
+                        "limits": {
+                          "type": "object",
+                          "additionalProperties": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    },
+                    "maxRunTime": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "KubeResourcesFlavor": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "object",
+            "properties": {
+              "requests": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              },
+              "limits": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "maxRunTime": {
+            "type": "integer"
+          }
+        }
+      },
+      "ImageDetails": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "desc": {
+            "type": "string"
+          }
+        }
+      },
+      "Page-ImageDetails": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "data": {},
+              "size": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "skip": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "tags": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    },
+                    "desc": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "QueueResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "flavor": {
+            "type": "string"
+          },
+          "cpu": {
+            "type": "string"
+          },
+          "memory": {
+            "type": "string"
+          },
+          "gpu": {
+            "type": "number"
+          },
+          "totalPending": {
+            "type": "number"
+          },
+          "totalRunning": {
+            "type": "number"
+          }
+        }
+      },
+      "QueueResultDisplayRef": {
+        "type": "object",
+        "additionalProperties": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "flavor": {
+              "type": "string"
+            },
+            "cpu": {
+              "type": "string"
+            },
+            "memory": {
+              "type": "string"
+            },
+            "gpu": {
+              "type": "number"
+            },
+            "totalPending": {
+              "type": "number"
+            },
+            "totalRunning": {
+              "type": "number"
+            }
+          }
+        }
+      },
+      "QueueResultDisplay": {
+        "type": "object",
+        "properties": {
+          "result": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "flavor": {
+                  "type": "string"
+                },
+                "cpu": {
+                  "type": "string"
+                },
+                "memory": {
+                  "type": "string"
+                },
+                "gpu": {
+                  "type": "number"
+                },
+                "totalPending": {
+                  "type": "number"
+                },
+                "totalRunning": {
+                  "type": "number"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Page-JobInfo": {
+        "allOf": [
+          {
+            "type": "object",
+            "properties": {
+              "data": {},
+              "size": {
+                "type": "number"
+              },
+              "total": {
+                "type": "number"
+              },
+              "skip": {
+                "type": "number"
+              }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "data": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "name": {
+                      "type": "string"
+                    },
+                    "uid": {
+                      "type": "string"
+                    },
+                    "status": {
+                      "type": "string",
+                      "enum": [
+                        "PENDING",
+                        "PENDING_ERROR",
+                        "RUNNING",
+                        "SUCCESS",
+                        "ERROR",
+                        "UNKNOWN"
+                      ]
+                    },
+                    "dateLaunched": {
+                      "type": "number"
+                    },
+                    "position": {
+                      "type": "number"
+                    },
+                    "flavor": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      },
+      "JobInfo": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "PENDING_ERROR",
+              "RUNNING",
+              "SUCCESS",
+              "ERROR",
+              "UNKNOWN"
+            ]
+          },
+          "dateLaunched": {
+            "type": "number"
+          },
+          "position": {
+            "type": "number"
+          },
+          "flavor": {
+            "type": "string"
+          }
+        }
+      },
+      "JobLog": {
+        "type": "object",
+        "properties": {
+          "stdOut": {
+            "type": "string"
+          }
+        }
+      },
+      "JobDetails": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "uid": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "Pending",
+              "Pending - error",
+              "Running",
+              "Succeeded",
+              "Failed",
+              "Unknown"
+            ]
+          },
+          "dateLaunched": {
+            "type": "number"
+          },
+          "position": {
+            "type": "number"
+          },
+          "flavor": {
+            "type": "string"
+          }
+        }
+      },
+      "SubmitProps": {
+        "type": "object",
+        "required": [
+          "datasetsList"
+        ],
+        "properties": {
+          "jobName": {
+            "type": "string"
+          },
+          "image": {
+            "type": "string"
+          },
+          "resources": {
+            "type": "string"
+          },
+          "commandArgs": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "dryRun": {
+            "type": "boolean"
+          },
+          "annotations": {
+            "type": "string"
+          },
+          "datasetsList": {
+            "type": "string"
+          },
+          "env": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      },
+      "EnvEntry": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}
