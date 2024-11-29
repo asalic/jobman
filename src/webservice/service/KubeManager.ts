@@ -3,7 +3,7 @@ import { KubeConfig, BatchV1Api, V1Job, V1JobStatus, V1DeleteOptions, Watch,
         //V1Volume, V1VolumeMount, 
         V1PodSecurityContext, V1ResourceRequirements, 
         V1EnvVar} from '@kubernetes/client-node';
-import { v4 as uuidv4 }  from "uuid";
+import { v4 as uuidv4}  from "uuid";
 import log from "loglevel";
 import fetch from "node-fetch";
 import type { RequestInit, Response } from "node-fetch";
@@ -188,7 +188,7 @@ export default class KubeManager {
                         //...volumes && {volumes},
                         containers: [
                             {
-                                name: `container-${jn}`,
+                                name: `container`,
                                 image,
                                 ...env && { env },
                                 //...command && {command},
@@ -480,7 +480,7 @@ export default class KubeManager {
         if (this.settings.job.resources.label) {
             r[this.settings.job.resources.label] = kr.name;
         }
-        r[this.settings.job.userIdAnnotation] = userId;
+        r[this.settings.job.userNameAnnotation] = userId;
         Object.assign(r, Util.getAnnotationsFromSettings(this.settings.job.annotations));
         if (props.annotations) {
                 Object.assign(r, JSON.parse(props.annotations));   
@@ -637,16 +637,21 @@ export default class KubeManager {
     }
 
     protected userOwnsJob(userId: string, job: V1Job): boolean {
-        return job.metadata?.annotations?.[this.settings.job.userIdAnnotation] === userId;
+        return job.metadata?.annotations?.[this.settings.job.userNameAnnotation] === userId;
     }
 
     protected getInternalJobName(userId: string, jobName?: string | null | undefined):  string {
-        return userId + "--" + (jobName ?? uuidv4());
+        return userId + (jobName ?? uuidv4());
     }
 
     protected getJobName(userId: string, internalJobName: string): string {
-        return internalJobName.substring(userId.length + 2);
+        return internalJobName.substring(userId.length);
     }
+
+    // protected uuid2B64(uuid: string): string {
+    //     const userIdB64Bin:  Uint8Array = uuidParse(uuid);
+    //     return  Buffer.from(userIdB64Bin).toString('base64');
+    // }
 
     // protected updateQueueResultJobStats(qrStats: QueueResultJobStats, kubeStats: V1JobStatus) {
     //     qrStats.total += 1;

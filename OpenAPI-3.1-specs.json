@@ -3,12 +3,13 @@
   "info": {
     "title": "Jobman web service",
     "termsOfService": "https://chaimeleon-test.grycap.i3m.upv.es/dataset-service/web/terms-and-conditions.pdf",
-    "license": {
-      "name": "Apache 2.0",
-      "url": "http://www.apache.org/licenses/LICENSE-2.0.html"
-    },
-    "version": "1"
+    "examples": 123
   },
+  "servers": [
+    {
+      "url": "/api/v1"
+    }
+  ],
   "tags": [
     {
       "name": "jobs",
@@ -156,21 +157,24 @@
             "application/json": {
               "schema": {
                 "type": "object",
-                "required": [
-                  "datasetsList"
-                ],
                 "properties": {
                   "jobName": {
-                    "type": "string"
+                    "type": "string",
+                    "maxLength": 36,
+                    "pattern": "[a-z0-9]([a-z0-9-]{0,61}[a-z0-9]",
+                    "description": "The name of the job.  Keep  inmind that internally, jobman prepends the OIDC user name"
                   },
                   "image": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "name of the Docker image followed by colon (:) followed  by version"
                   },
                   "resources": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "A label that represents a known predefined Kubernetes resources specification"
                   },
                   "commandArgs": {
                     "type": "array",
+                    "description": "List of arguments that you pass to the entrypoint of the chosen Docker image",
                     "items": {
                       "type": "string"
                     }
@@ -182,7 +186,8 @@
                     "type": "string"
                   },
                   "datasetsList": {
-                    "type": "string"
+                    "type": "string",
+                    "description": "List of UUIDs separated by one comma (,)"
                   },
                   "env": {
                     "type": "array",
@@ -1204,21 +1209,24 @@
       },
       "SubmitProps": {
         "type": "object",
-        "required": [
-          "datasetsList"
-        ],
         "properties": {
           "jobName": {
-            "type": "string"
+            "type": "string",
+            "maxLength": 36,
+            "pattern": "[a-z0-9]([a-z0-9-]{0,61}[a-z0-9]",
+            "description": "The name of the job.  Keep  inmind that internally, jobman prepends the OIDC user name"
           },
           "image": {
-            "type": "string"
+            "type": "string",
+            "description": "name of the Docker image followed by colon (:) followed  by version"
           },
           "resources": {
-            "type": "string"
+            "type": "string",
+            "description": "A label that represents a known predefined Kubernetes resources specification"
           },
           "commandArgs": {
             "type": "array",
+            "description": "List of arguments that you pass to the entrypoint of the chosen Docker image",
             "items": {
               "type": "string"
             }
@@ -1230,7 +1238,8 @@
             "type": "string"
           },
           "datasetsList": {
-            "type": "string"
+            "type": "string",
+            "description": "List of UUIDs separated by one comma (,)"
           },
           "env": {
             "type": "array",

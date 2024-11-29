@@ -22,7 +22,7 @@ export default class OidcAuth {
         const ur: UserRepresentation = await this.auth(userAuth.token);
         const kapReq: KeycloakApiToken  | null = this.validateApiToken(userAuth.token,  ur);
         if (kapReq) {
-          return ur.id;
+          return ur.username;//ur.id;
         } else {
           return null;
         }
@@ -39,7 +39,7 @@ export default class OidcAuth {
           );
         if (authR.status === 200) {
           const info: any = await authR.json();
-          return info["sub"];
+          return info["preferred_username"];//info["sub"];
         } else {
           return null;
         }

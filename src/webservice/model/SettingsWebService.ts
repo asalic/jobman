@@ -49,7 +49,7 @@ export interface SecurityContext {
 }
 
 export interface Job {
-    userIdAnnotation: string;
+    userNameAnnotation: string;
     annotationDatasetsList: string;
     annotations?: Annotation[] | null;
     //datasetsList?: string | null;
