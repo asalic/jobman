@@ -31,8 +31,8 @@ export default class RestService {
         return this.commonCall<QueueResultDisplay | null>("/queue/", "GET");
     }
 
-    public async submit(props: SubmitProps): Promise<KubeOpReturn<null | string | JobSubmiSuccess>> {
-        return this.commonCall<null | string | JobSubmiSuccess>("/jobs/", "POST", props);
+    public async submit(props: SubmitProps): Promise<KubeOpReturn<null | JobSubmiSuccess>> {
+        return this.commonCall<null | JobSubmiSuccess>("/jobs/", "POST", props);
     }
 
     public async list(): Promise<KubeOpReturn<Page<JobInfo> | null>> {

@@ -120,7 +120,7 @@ export default class KubeManager {
         }
     }
 
-    public async submit(props: SubmitProps, userId: string): Promise<KubeOpReturn<null | string | JobSubmiSuccess>> {
+    public async submit(props: SubmitProps, userId: string): Promise<KubeOpReturn<null | JobSubmiSuccess>> {
         try {
             // if (!props.image) {
             //     return new KubeOpReturn(KubeOpReturnStatus.Error,
@@ -203,17 +203,17 @@ export default class KubeManager {
                 }
 
             }
-            if (props.dryRun) {
-                return new KubeOpReturn(KubeOpReturnStatus.Success, "\n" + JSON.stringify(job, null, 2), "\n" + JSON.stringify(job, null, 2));
+            // if (props.dryRun) {
+            //     return new KubeOpReturn(KubeOpReturnStatus.Success, "\n" + JSON.stringify(job, null, 2), "\n" + JSON.stringify(job, null, 2));
 
-            } else {
+            // } else {
                 const r = await this.k8sApi.createNamespacedJob(namespace, job);
                 return new KubeOpReturn(this.getStatusKubeOp(r.response.statusCode), 
                     `Job named '${jn}' created successfully by user '${userId}'`, {
                         jobName: this.getJobName(userId, jn)
                     });
 
-            }
+            // }
             //}
         
         } catch (e) {

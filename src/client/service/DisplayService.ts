@@ -140,17 +140,17 @@ export default class DisplayService {
     public submit(props: SubmitProps): void {
         this.km.submit(props)
             .then(r => {
-                    if (r.payload) {
-                        if (typeof r.payload === "string") {
-                            this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, r.payload, null));
-                        } else if (typeof r.payload === "object") {
+                    // if (r.payload) {
+                    //     if (typeof r.payload === "string") {
+                    //         this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, r.payload, null));
+                    //     } else if (typeof r.payload === "object") {
                             this.simpleMsg(r,  () => console.log(JSON.stringify(r.payload)));
-                        } else {
-                            throw new Error(`Return of the submit call having type '${typeof r.payload}' not handled.`);
-                        }
-                    } else {
-                        this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job successfully submitted.", null));
-                    }
+                    //     } else {
+                    //         throw new Error(`Return of the submit call having type '${typeof r.payload}' not handled.`);
+                    //     }
+                    // } else {
+                    //     this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Success, "Job successfully submitted.", null));
+                    // }
             })
             .catch(e => this.simpleMsg(new KubeOpReturn(KubeOpReturnStatus.Error, e.message ?? String(e), null)));
     }
