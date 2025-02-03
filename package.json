@@ -1,6 +1,6 @@
 {
   "name": "jobman",
-  "version": "2.0.6-BETA",
+  "version": "2.0.7-BETA",
   "main": "./dist/index.ts",
   "exports": {
     "default": "./src/"
@@ -11,6 +11,7 @@
   },
   "description": "The Kubernetes job manager",
   "dependencies": {
+    "string-argv":"^0.3.2",
     "@kubernetes/client-node": "^0.18.1",
     "babel-plugin-transform-import-meta": "^2.2.1",
     "console-table-printer": "^2.12.0",
