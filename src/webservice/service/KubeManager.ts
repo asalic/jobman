@@ -5,6 +5,7 @@ import { KubeConfig, BatchV1Api, V1Job, V1JobStatus, V1DeleteOptions, Watch,
         V1EnvVar} from '@kubernetes/client-node';
 import { v4 as uuidv4}  from "uuid";
 import log from "loglevel";
+import stringArgv from "string-argv";
 import fetch from "node-fetch";
 import type { RequestInit, Response } from "node-fetch";
 import https from "https";
@@ -130,17 +131,29 @@ export default class KubeManager {
             //console.log(`Parameters sent to the job's container: ${JSON.stringify(props.command)}`);
             const kr: KubeResourcesFlavor = KubeResourcesPrep.getKubeResources(this.settings, props.resources);
             const jn: string = this.getInternalJobName(userId, props.jobName);
-            const imageNmTag: string | undefined = props.image ?? this.settings.job.defaultImage;
+            let imageNmTag: string | undefined = undefined;
+            if (props.image) {
+                imageNmTag = props.image;
+            } else {
+                imageNmTag = this.settings.job.defaultImage;
+                console.log(`No image specified, using default image '${this.settings.job.defaultImage}'`);
+            }
+            
             if (!imageNmTag || imageNmTag.length === 0) {
                 throw new ParameterException(
                     `Please specify an image name and a tag either using the command line parameters or defining a default value in application's settings`); 
             }
             let prefix = "";
-            const [imgNm, imgTag] = imageNmTag.split(":");
+            let [imgNm, imgTag] = imageNmTag.split(":");
+            if (imgTag === "" || imgTag === undefined) {
+                imgTag = "latest";
+            }
             for (const hp of this.settings.harborProjects) {
                 const projImgs: KubeOpReturn<ImageDetails[]>  = await this.getHarborImages(hp);
                 if (projImgs.isOk() && projImgs.payload) {
-                    const f:ImageDetails | undefined = projImgs.payload.find((id: ImageDetails) => id.name === imgNm && id.tags.find(t => t === imgTag) !== undefined);
+                    const f:ImageDetails | undefined = projImgs.payload
+                        .find((id: ImageDetails) => id.name === imgNm && 
+                            id.tags.find(t => t === imgTag) !== undefined);
                     if (f) {
                         const u = new URL(hp.baseUrl);
                         prefix = `${u.hostname}${u.port !== "" ? ":" + u.port : ""}/${hp.name}/`;
@@ -150,7 +163,7 @@ export default class KubeManager {
                     console.error(projImgs.message);
                 }    
             }
-            const image = prefix + imageNmTag;
+            const image = prefix + imgNm + ":" + imgTag;
             const namespace = this.getNamespace();
             console.log(`Using image '${image}'`);
             //console.log("Preparing volumes...");
@@ -172,10 +185,17 @@ export default class KubeManager {
             //     }
             // }
             const priorityClassName: string | undefined | null = this.settings.job.priorityClassName;
-            const cmdArgs: string[] | undefined = props.commandArgs ? (props.commandArgs.length === 0 ? undefined : props.commandArgs) : props.commandArgs;
+            // const cmdArgs: string[] | undefined = props.commandArgs ? 
+            //     (props.commandArgs.length === 0 ? undefined : props.commandArgs) : props.commandArgs;
             //const command: string[] | undefined = props.command ? cmdArgs : undefined;
-            const args: string[] | undefined = //props.command ? undefined : 
-                cmdArgs;
+            let args: string[] | undefined = undefined;
+            if (Array.isArray(props.commandArgs)) {
+                args = props.commandArgs;
+            } else if (typeof props.commandArgs === "string")  {
+                args = stringArgv(props.commandArgs, "", "");
+            }
+            console.log(args);
+
             const env: Array<V1EnvVar> | undefined = props.env?.map(e => Object.assign(new V1EnvVar(),  e));
             job.spec = {
                 backoffLimit: 0,
@@ -204,7 +224,7 @@ export default class KubeManager {
 
             }
             // if (props.dryRun) {
-            //     return new KubeOpReturn(KubeOpReturnStatus.Success, "\n" + JSON.stringify(job, null, 2), "\n" + JSON.stringify(job, null, 2));
+            //console.log(JSON.stringify(job, null, 2));
 
             // } else {
                 const r = await this.k8sApi.createNamespacedJob(namespace, job);
