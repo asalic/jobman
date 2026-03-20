@@ -1,5 +1,7 @@
 import type  { Request } from 'express'; 
 import { Headers, Response } from 'node-fetch';
+import * as jose from 'jose';
+
 import type UserRepresentation from "../model/UserRepresentation.js";
 import type KeycloakApiToken from "../model/KeycloakApiToken.js";
 import AuthenticationError from "../error/AuthenticationError.js";
@@ -7,6 +9,24 @@ import type { SettingsWebService } from '../model/SettingsWebService.js';
 import type UserAuthorization from '../model/UserAuthorization.js';
 import EAuthorizationType from '../model/EAuthorizationType.js';
 import Util from '../../common/Util.js';
+
+interface KeycloakTokenPayload extends jose.JWTPayload {
+  preferred_username?: string;
+  email?: string;
+  name?: string;
+
+  realm_access?: {
+    roles: string[];
+  };
+
+  resource_access?: {
+    [clientId: string]: {
+      roles: string[];
+    };
+  };
+
+  scope?: string;
+}
 
 
 export default class OidcAuth {
@@ -17,6 +37,7 @@ export default class OidcAuth {
     protected appConf: SettingsWebService;
     protected realmUrl: string;
     protected introspectUrl: string;
+    // protected jwks: any;
 
     constructor(appConf: SettingsWebService) {
         this.appConf = appConf;
@@ -36,9 +57,31 @@ export default class OidcAuth {
         }
 
       } else if (userAuth.type === EAuthorizationType.BEARER) {
-        const data: any = await this.introspectToken(userAuth.token);
+        const jwks = jose.createRemoteJWKSet(
+            new URL(`${this.realmUrl}/protocol/openid-connect/certs`)
+
+        );
+        try {
+            const { payload } = await jose.jwtVerify(userAuth.token, jwks, {
+                issuer: this.realmUrl,
+                audience: this.appConf.oidc.audiences[0] ?? "",
+            });
+            const kcPayload = payload as KeycloakTokenPayload;
+
+            // console.log(payload);
+            // console.log(kcPayload);
+            const username = typeof kcPayload.preferred_username === 'string'
+                    ? kcPayload?.preferred_username
+                    : null;//(kcPayload.sub ?? null);
+
+            return username;
+        } catch (e: any) {
+            console.error(e);
+            throw new AuthenticationError("Token validation error", e.message ?? "An unknown error has occured when validating your token", 401);
+        }
+        //const data: any = await this.introspectToken(userAuth.token);
         // this.verifyIntrospectToken(data);
-        return data["preferred_username"];
+        //return data["preferred_username"];
         // const headers: Headers = new Headers();
         // headers.set("Authorization", `Bearer ${userAuth.token}`);
         // const authR: Response = await fetch(
