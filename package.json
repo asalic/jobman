@@ -1,6 +1,6 @@
 {
   "name": "jobman",
-  "version": "2.2.5",
+  "version": "2.2.6",
   "main": "./dist/index.ts",
   "exports": {
     "default": "./src/"
@@ -25,7 +25,8 @@
     "express": "5.2.1",
     "http-errors": "2.0.1",
     "http-proxy-middleware": "3.0.5",
-    "compare-versions": "6.1.1"
+    "compare-versions": "6.1.1",
+    "jose": "6.2.0"
   },
   "plugins": [
     "babel-plugin-transform-import-meta"
