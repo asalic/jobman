@@ -65,7 +65,7 @@ export default class KubeResourcesPrep {
             }
         }
         // const res: V1ResourceRequirements = new V1ResourceRequirements();
-        // console.log(tmp);
+
         return tmp;//{...res, ...tmp.resources};
     }
 }

@@ -9,6 +9,19 @@ import type { RequestInit, Response } from "node-fetch";
 
 export default class Util {
 
+    public static getErrorMessage(error: unknown): string {
+  if (error instanceof Error) {
+    return error.message;
+  }
+
+  if (typeof error === "string") {
+    return error;
+  }
+
+  return "An unknown error occurred";
+}
+
+
     public static getDirName(): string {
         return path.dirname(fileURLToPath(import.meta.url));
     }

@@ -65,8 +65,8 @@ export default class KubeManager {
     protected settings: SettingsWebService;
     protected watch: Watch;
 
-    public constructor(settings: SettingsWebService) {
-        this.logger = new LoggerService();
+    public constructor(settings: SettingsWebService, logger: LoggerService) {
+        this.logger = logger;
         this.settings = settings;
         this.clusterConfig = this.loadKubeConfig(settings.kubeConfig);
         this.k8sApi = this.clusterConfig.makeApiClient(BatchV1Api);
@@ -142,12 +142,10 @@ export default class KubeManager {
             //         "Please specify an image and tag. Use the 'images' command to see the available images and tags for each of them.",
             //         null);
             // } else {            
-            //console.log(`Parameters sent to the job's container: ${JSON.stringify(props.command)}`);
             const kr: KubeResourcesFlavor = KubeResourcesPrep.getKubeResources(this.settings, props.resources);
             const jn: string = this.getInternalJobName(userId, props.jobName);
+            this.logger.info("Job name: " + jn)
             const namespace = this.getNamespace();
-            //console.log("Preparing volumes...");
-            //const [volumes, volumeMounts] = await this.prepareJobVolumes();
             const job: V1Job = new V1Job();
             const annotations = this.getAnnotations(kr, props, userId);
             job.metadata = {
@@ -212,7 +210,7 @@ export default class KubeManager {
             const image: ImageInfo = await hm.getImageInfo(props.image);
             const imagePullSecrets = image.imagePullSecrets;
 
-            console.log(`Using image '${image.fullUrl}'`);
+            this.logger.info(`Using image '${image.fullUrl}'`);
             job.spec = {
                 backoffLimit: 0,
                 template: {
@@ -233,8 +231,6 @@ export default class KubeManager {
 
             }
 
-            // console.log( JSON.stringify(job, null, 2));
-
             if (props.dryRun) {
                 return new KubeOpReturn(KubeOpReturnStatus.Success, "\n" + JSON.stringify(job, null, 2), "\n" + JSON.stringify(job, null, 2));
 
@@ -248,8 +244,7 @@ export default class KubeManager {
             }
             //}
         
-        } catch (e) {
-            console.error(e);
+        } catch (e: any) {
             return this.handleKubeOpsError(e);
         }
     }
@@ -392,10 +387,9 @@ export default class KubeManager {
                 if (this.userOwnsJob(userId, j)) {
                     const podName: string | undefined =  (await this.getJobPodInfo(jn, userId))?.metadata?.name;
 
-                    //console.dir((await this.k8sApi.readNamespacedJobStatus(jn, this.getNamespace())).body.status);
+                    //this.logger.info(JSON.strigify((await this.k8sApi.readNamespacedJobStatus(jn, this.getNamespace())).body.status));
                     if (podName) {
-                        console.log(`Getting log for pod '${podName}', user '${userId}' in namespace '${namespace}'`);
-                        //console.dir((await this.k8sCoreApi.readNamespacedPodStatus(podName, this.getNamespace())).body.status?.conditions);
+                        // this.logger.info(`Getting log for pod '${podName}', user '${userId}' in namespace '${namespace}'`);
                         const log: string = (await this.k8sCoreApi.readNamespacedPodLog({ name: podName, namespace }));
                         return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, !log ? 
                             { stdOut: "" } : { stdOut: log });
@@ -505,7 +499,7 @@ export default class KubeManager {
                     }
                 }
             }
-            console.error(`Container named '${cn}' not found in pod '${pod}'`);
+            this.logger.error(`Container named '${cn}' not found in pod '${pod}'`);
         } catch(e: any) {
             // if (e instanceof HttpError && e.body.code === 404) {
             //     const pods = await this.k8sCoreApi.listNamespacedPod({ namespace: this.getNamespace(), labelSelector: `job-name=${internalJobName}` });
@@ -513,13 +507,13 @@ export default class KubeManager {
             //     if (pod?.status?.containerStatuses?.[0]?.state?.terminated?.finishedAt) {
             //         return KubeManager.RESOURCE_USAGE_FINISHED;
             //     } else {
-            //         console.error(e.body.message);
+            //         this.logger.error(e.body.message);
             //     }
             // } else {
             //     const k = this.handleKubeOpsError(e);
-            //     console.error(k.message)
+            //     this.logger.error(k.message)
             // }
-            console.error(e);
+            this.logger.error(e);
         }
         return null;
     }
@@ -650,10 +644,11 @@ export default class KubeManager {
             const r: V1Status = await this.k8sApi.deleteNamespacedJob({ name: jobName, namespace: this.getNamespace(), propagationPolicy: 'Background' });
             status = this.getStatusKubeOp(r.code);
             if (status !==  KubeOpReturnStatus.Success) {
-                console.error("Unable to delete job '${jobName}':", r);
                 message = `Unable to delete job '${jobName}' with error code ${r.code ?? "'unknown'"} and details: ${r.details ?? "'unknown'"}`
+                this.logger.error(message);
             } else {    
                 message = `Job '${jobName}' has been successfully deleted.`;
+                this.logger.info(message);
             }
         } else {
             throw new KubeException(`Job '${jobName}' not found.`);
@@ -763,19 +758,19 @@ export default class KubeManager {
     // }
 
     protected handleKubeOpsError(e: any): KubeOpReturn<null> {
-        console.log(JSON.stringify(e));
+
+        this.logger.error(e);
         // if (e instanceof HttpError) {
         //     return new KubeOpReturn(KubeOpReturnStatus.Error, `Error message from Kubernetes: ${e.body.message}`, null);
         // } else 
         if (e.body && typeof e.body === "string") {
             try {
                 const b = JSON.parse(e.body);
-                console.log(b);
                 if (b.message) {
                     return new KubeOpReturn(KubeOpReturnStatus.Error, b.message, null);
                 }
-            } catch (parseErr) {
-                console.error(parseErr);
+            } catch (parseErr: any) {
+                this.logger.error(parseErr);
             } 
         } else if ("message" in e) {
             return new KubeOpReturn(KubeOpReturnStatus.Error, e.message, null);

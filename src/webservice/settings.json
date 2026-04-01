@@ -68,5 +68,10 @@
         "prefix": "",
         "api": "/api/v1"
     },
-    "defaultKubeURL": ""
+    "defaultKubeURL": "",
+    "log": {
+        "directory": "/tmp/jobman",
+        "level": "info",
+        "fileName": "jobman-webservice.log"
+    }
 }

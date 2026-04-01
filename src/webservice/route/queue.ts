@@ -6,8 +6,9 @@ import type { Response } from 'express';
 import type { NextFunction } from 'express';
 import { commonRequest } from './common.js';
 import type QueueResultDisplay from '../../common/model/QueueResultDisplay.js';
+import type LoggerService from '../service/LoggerService.js';
 
-const queueRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
+const queueRouter = function(oidcAuth: OidcAuth, km: KubeManager, logger: LoggerService) {
     let routerObj = express.Router();
 
     /**
@@ -33,7 +34,7 @@ const queueRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
     *                $ref: '#/components/schemas/ErrorResponse'
      */
     routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        commonRequest<QueueResultDisplay | null>(req, res, next, oidcAuth, km.queue.bind(km));
+        commonRequest<QueueResultDisplay | null>(req, res, next, oidcAuth, km.queue.bind(km), logger);
     });
 
     return routerObj;

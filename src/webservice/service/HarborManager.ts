@@ -13,14 +13,17 @@ import type { HarborRespositoryArtifact } from "../model/HarborRespositoryArtifa
 import type ImageRepo from "../../common/model/ImageRepo.js";
 import type ImageInfo from "../model/ImageInfo.js";
 import Util from "../../common/Util.js";
+import type LoggerService from "./LoggerService.js";
 
 export default class HarborManager {
 
     protected settings: SettingsWebService;
+    protected logger: LoggerService;
 
-    public constructor(settings: SettingsWebService) {
+    public constructor(settings: SettingsWebService,  logger: LoggerService) {
         // this.checkSettings(settings);
         this.settings = settings;
+        this.logger = logger;
     }
 
     public async imageDetails(props: ImageDetailsProps, userId: string): Promise<KubeOpReturn<string | null>> {
@@ -29,7 +32,7 @@ export default class HarborManager {
         }
         for (const hp of this.settings.harborProjects) {        
             const reposUrl = `${hp.baseUrl}/api/v2.0/projects/${hp.name}/repositories`;
-            //console.log(`Getting repos from ${reposUrl}`);
+            //this.logger.info(`Getting repos from ${reposUrl}`);
             const agent = new https.Agent({
                 rejectUnauthorized: false,
             });
@@ -47,7 +50,7 @@ export default class HarborManager {
                     }
                 }
             } else {
-                console.error(`Unable to load repositories from '${reposUrl}'`);
+                this.logger.error(`Unable to load repositories from '${reposUrl}'`);
             }
         }
         return new KubeOpReturn(KubeOpReturnStatus.Error, `No image with name '${props.image}' found.`, null);
@@ -60,7 +63,7 @@ export default class HarborManager {
             if (projImgs.isOk() && projImgs.payload) {
                 imageDetails.push(...projImgs.payload);
             } else {
-                console.error(projImgs.message);
+                this.logger.error(projImgs.message ?? `An error occured when loading Harbor images fron ${hp.baseUrl}/${hp.name}`);
             }    
         }
         return new KubeOpReturn(KubeOpReturnStatus.Success, undefined, { data: imageDetails, size: imageDetails.length, 
@@ -70,7 +73,7 @@ export default class HarborManager {
     public async getHarborImages(hp: HarborProject): Promise<KubeOpReturn<ImageRepo[]>> {
         const projsUrl = `${hp.baseUrl}/api/v2.0/projects`
         const reposUrl = `${projsUrl}/${hp.name}/repositories`;
-        console.log(`Getting repos from ${reposUrl}`);
+        this.logger.info(`Getting repos from ${reposUrl}`);
         const agent = new https.Agent({
             rejectUnauthorized: false,
             });
@@ -122,7 +125,7 @@ export default class HarborManager {
                                 tags: art.tags !== null ? art.tags.map(t => t.name) : []
                                 
                             })
-                            // console.log(art);
+                            // this.logger.info(art);
                             // if (art.tags !== null) {
                             //     for (const tag of art.tags) {
                             //         const artUrl = `${artsUrl}/${tag.name}`;
@@ -131,20 +134,19 @@ export default class HarborManager {
                             //             agent,
                             //             ...hp.token && {headers: [["Autorization", `Bearer ${hp.token}`]]}
                             //         });
-                            //         console.log(await artifact.json());
                             //     }
                             //     // if (art.tags !== null)
                             //     //     tags.push(...art.tags.map(t => t.name));
                             // }
                         }
                     } else {
-                        console.warn(`Unable to load artifacts from ${artsUrl}, error: '${await rArtifacts?.text()}'`);
+                        this.logger.warn(`Unable to load artifacts from ${artsUrl}, error: '${await rArtifacts?.text()}'`);
                     }
                 } 
                 ++pageNum;      
             } else {
                 error = true;
-                console.error(`Unable to load repositories from '${reposUrl}?page=${pageNum}&page_size=${pageSize}', API responded with code '${response?.statusText}' and message: ${JSON.stringify(await response?.json())}`);
+                this.logger.error(`Unable to load repositories from '${reposUrl}?page=${pageNum}&page_size=${pageSize}', API responded with code '${response?.statusText}' and message: ${JSON.stringify(await response?.json())}`);
                 // If the first page fails, don't try again
                 break;
             }
@@ -184,9 +186,8 @@ export default class HarborManager {
             }
 
             if (!digest && ! tag) {
-                console.error(`Cannot extract tag or digest from image name '${submitImage}'`)
+                this.logger.error(`Cannot extract tag or digest from image name '${submitImage}'`)
             }
-            console.log(tag, digest);
             let matched: ImageInfo[] = [];
             // Check all the available repos for the requested image
             for (const hp of this.settings.harborProjects) {
@@ -196,7 +197,7 @@ export default class HarborManager {
                     for (const projImg of projImgs.payload) {
                         const fullImgURL = `${prefix}/${projImg.name}`;
                         if (projImg.name === submitImageName || fullImgURL.endsWith(submitImageName)) {
-                            // console.log(`--- Image matched with '${projImg.name}' or '${fullImgURL}'`)
+                            // this.logger.debug(`--- Image matched with '${projImg.name}' or '${fullImgURL}'`)
                             let tagDigest = null;
                             if (tag) {
                                 for (const artifact of projImg.artifacts) {
@@ -218,7 +219,7 @@ export default class HarborManager {
                         } 
                     }
                 } else {
-                    console.error(projImgs.message);
+                    this.logger.error(projImgs.message ?? `An error occured when loading Harbor images fron ${hp.baseUrl}/${hp.name}`);
                 }
             }
 
@@ -232,7 +233,6 @@ export default class HarborManager {
                 return result;
             } else {
                 const msg = `Multiple images matched '${submitImage}': ${matched.map(i => i.fullUrl).join(", ")}. Please contact the administrator, or use the full Docker compatible URL.`
-                console.error(msg);
                 throw new Error(msg);
             }
         } else {

@@ -4,8 +4,12 @@ import { KubeOpReturn, KubeOpReturnStatus } from '../../common/model/KubeOpRetur
 import type OidcAuth from '../service/OidcAuth.js';
 import type AbstractDto from '../../common/model/AbstractDto.js';
 import type ErrorResponse from '../../common/model/ErrorResponse.js';
+import type LoggerService from '../service/LoggerService.js';
+import Util from '../../common/Util.js';
 
-export async function commonRequest<T extends AbstractDto | string | null>(req: Request, res: Response, next: NextFunction, oidcAuth: OidcAuth, method: Function) {
+export async function commonRequest<T extends AbstractDto | string | null>(req: Request, 
+        res: Response, next: NextFunction, oidcAuth: OidcAuth, method: Function, 
+        logger: LoggerService) {
     let payload: KubeOpReturn<T | null> | null = null;
     let respPayload: ErrorResponse | any = null;
     let sc: number = 501;
@@ -29,14 +33,17 @@ export async function commonRequest<T extends AbstractDto | string | null>(req: 
         respPayload = {message: "Invalid token", status: sc };
         //payload = new KubeOpReturn(KubeOpReturnStatus.Error, "Invalid API token", null);
       }
-    } catch(e) {
+    } catch(e: unknown) {
       if (e instanceof AuthenticationError) {
         sc = 401;
-        respPayload = {message: `${e.getTitle()}: ${e.getMessage()}`, status: sc };
+        const message = `${e.getTitle()}: ${e.getMessage()}`;
+        logger.error(message);
+        respPayload = {message, status: sc };
       } else {
-        console.error(e);
+        const message = "Something went wrong";
+        logger.error(`Something went wrong: ${Util.getErrorMessage(e)}`);
         sc = 500;
-        respPayload = {message: "Something went wrong", status: sc };
+        respPayload = {message, status: sc };
       }
     } finally {
       res.status(sc);

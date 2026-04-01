@@ -101,6 +101,12 @@ export interface PathInfo {
     api: string;
 }
 
+export interface Log {
+    directory: string;
+    level?: "trace" | "debug" | "info" | "warn" | "error" | "fatal" | null | undefined;
+    fileName?: string | null | undefined;
+}
+
 
 export interface SettingsWebService {
     jobsQueue: JobsQueue;
@@ -112,4 +118,5 @@ export interface SettingsWebService {
     port: string;
     path: PathInfo;
     defaultKubeURL?: string | null | undefined;
+    log: Log;
 }

@@ -9,6 +9,7 @@ import type { SettingsWebService } from '../model/SettingsWebService.js';
 import type UserAuthorization from '../model/UserAuthorization.js';
 import EAuthorizationType from '../model/EAuthorizationType.js';
 import Util from '../../common/Util.js';
+import type LoggerService from './LoggerService.js';
 
 interface KeycloakTokenPayload extends jose.JWTPayload {
   preferred_username?: string;
@@ -37,12 +38,14 @@ export default class OidcAuth {
     protected appConf: SettingsWebService;
     protected realmUrl: string;
     protected introspectUrl: string;
+    protected logger: LoggerService;
     // protected jwks: any;
 
-    constructor(appConf: SettingsWebService) {
+    constructor(appConf: SettingsWebService, logger: LoggerService) {
         this.appConf = appConf;
         this.realmUrl = `${this.appConf.oidc.url}/realms/${this.appConf.oidc.realm}`
         this.introspectUrl = `${this.realmUrl}/protocol/openid-connect/token/introspect`;
+        this.logger = logger;
     }
 
     public  async authenticateAndAuthorize(req: Request): Promise<string | null> {
@@ -68,15 +71,12 @@ export default class OidcAuth {
             });
             const kcPayload = payload as KeycloakTokenPayload;
 
-            // console.log(payload);
-            // console.log(kcPayload);
             const username = typeof kcPayload.preferred_username === 'string'
                     ? kcPayload?.preferred_username
                     : null;//(kcPayload.sub ?? null);
 
             return username;
         } catch (e: any) {
-            console.error(e);
             throw new AuthenticationError("Token validation error", e.message ?? "An unknown error has occured when validating your token", 401);
         }
         //const data: any = await this.introspectToken(userAuth.token);
@@ -98,7 +98,8 @@ export default class OidcAuth {
         //   return null;
         // }
       } else {
-        throw  new AuthenticationError("Authorization error", `Unsupported authorization with type '${userAuth.type}'`, 401);
+        const msg = `Unsupported authorization with type '${userAuth.type}'`;
+        throw  new AuthenticationError("Authorization error", msg, 401);
       }
 
     }
@@ -120,13 +121,15 @@ export default class OidcAuth {
 
         if (!res || !res.ok) {
             const text = await res?.text();
-            throw new AuthenticationError(`Token error`, `Token introspection request failed: ${text}`, res?.status ?? 500);
+            const msg = `Token introspection request failed: ${text}`;
+            throw new AuthenticationError(`Token error`, msg, res?.status ?? 500);
         }
 
         const data: any = await res.json();
 
         if (!data.active) {
-            throw new AuthenticationError(`Token error`, 'Token is inactive', 401);
+            const msg = 'Token is inactive';
+            throw new AuthenticationError(`Token error`, msg, 401);
         }
 
         return data;
@@ -175,7 +178,7 @@ export default class OidcAuth {
           //headers.set('grant_type', "client_credentials");
           headers.set("Content-Type",  "application/x-www-form-urlencoded");
           //headers.set('request_uri', "http://localhost:5000");
-          console.log("Obtain application token");
+          this.logger.info("Obtaining application token");
           const body = new URLSearchParams({
             'client_id': this.appConf.oidc.clientId,
             'client_secret': this.appConf.oidc.clientSecret,
@@ -192,7 +195,7 @@ export default class OidcAuth {
           if (authR && authR.status === 200) {
             const authRJson: {[k: string]: any} = await authR.json() as {[k: string]: any};
             if (authRJson["access_token"]) {
-              console.log("Obtain user information for " + reqKap.userId);
+              this.logger.info("Obtain user information for " + reqKap.userId);
               const headers: Headers = new Headers();
               headers.set("Authorization",  `Bearer ${authRJson["access_token"]}`);
               const getUserCredentialsR: Response |  null = await Util.fetchRetry(
@@ -206,15 +209,13 @@ export default class OidcAuth {
                 const ur: UserRepresentation = this.userRepresentationKeycloak(await getUserCredentialsR.json());
                 return ur;
               } else {
-                throw new AuthenticationError("User info error", 
-                    `Unable to retrieve user information: ${(await getUserCredentialsR?.text()) ?? ""}`, 
-                    getUserCredentialsR?.status ?? 401);
+                const msg = `Unable to retrieve user information: ${(await getUserCredentialsR?.text()) ?? ""}`;
+                throw new AuthenticationError("User info error", msg, getUserCredentialsR?.status ?? 401);
               }          
             } else {
               throw new AuthenticationError("Token error", "The system was unable to obtain a user token", 500);
             }        
           } else {
-            console.error(authR);
             throw new AuthenticationError(authR?.statusText ?? "Authentication Error", 
                     (await authR?.text()) ?? "Authentication Error", authR?.status ?? 401);
           }

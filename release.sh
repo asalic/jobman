@@ -27,7 +27,7 @@ elif [ "$1" == "client" ]; then
     cp -r $SCRIPT_DIR/src/client $RELEASE_DIR/src
     # cp -r $SCRIPT_DIR/src/client/settings.json $RELEASE_DIR/dist/client/settings.json
     cp $SCRIPT_DIR/bin/jobman $RELEASE_DIR/bin
-    jq 'del(.dependencies."@kubernetes/client-node", .dependencies."swagger-ui-express", .dependencies."swagger-jsdoc")' $SCRIPT_DIR/package.json > $RELEASE_DIR/package.json
+    jq 'del(.dependencies."@kubernetes/client-node", .dependencies."swagger-ui-express", .dependencies."swagger-jsdoc", .dependencies."jose", .dependencies."pino", .dependencies."pino-http", .dependencies."pino-pretty")' $SCRIPT_DIR/package.json > $RELEASE_DIR/package.json
 else
     echo "Usage: $0 {client|webservice}"
     exit

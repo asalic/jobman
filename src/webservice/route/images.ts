@@ -5,8 +5,9 @@ import { commonRequest, pathParam } from "./common.js";
 import type Page from "../../common/model/Page.js";
 import type HarborManager from "../service/HarborManager.js";
 import type ImageRepo from "../../common/model/ImageRepo.js";
+import type LoggerService from "../service/LoggerService.js";
 
-const imagesRouter = function(oidcAuth: OidcAuth, hm: HarborManager) {
+const imagesRouter = function(oidcAuth: OidcAuth, hm: HarborManager, logger: LoggerService) {
     let routerObj = express.Router();
     
     /**
@@ -35,7 +36,7 @@ const imagesRouter = function(oidcAuth: OidcAuth, hm: HarborManager) {
     *                $ref: '#/components/schemas/ErrorResponse'
      */
     routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-      commonRequest<Page<ImageRepo> | null>(req, res, next, oidcAuth, hm.images.bind(hm));
+      commonRequest<Page<ImageRepo> | null>(req, res, next, oidcAuth, hm.images.bind(hm), logger);
     });
   
     /**
@@ -68,7 +69,7 @@ const imagesRouter = function(oidcAuth: OidcAuth, hm: HarborManager) {
     *                $ref: '#/components/schemas/ErrorResponse'
      */
     routerObj.get('/:imageName/description', async (req: Request, res: Response, next: NextFunction) => {
-      commonRequest<string | null>(req, res, next, oidcAuth, hm.imageDetails.bind(hm, { image: pathParam(req, "imageName") }));
+      commonRequest<string | null>(req, res, next, oidcAuth, hm.imageDetails.bind(hm, { image: pathParam(req, "imageName") }), logger);
     });
 
     return routerObj;

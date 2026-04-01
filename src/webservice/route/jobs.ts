@@ -12,9 +12,10 @@ import type Page from '../../common/model/Page.js';
 import type JobLog from '../../common/model/JobLog.js';
 import type JobSubmiSuccess from '../../common/model/JobSubmitSuccess.js';
 import type HarborManager from '../service/HarborManager.js';
+import type LoggerService from '../service/LoggerService.js';
 
 
-const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManager) {
+const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManager, logger: LoggerService) {
   let routerObj = express.Router();
   
   /**
@@ -41,7 +42,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManag
 *                $ref: '#/components/schemas/ErrorResponse'
    */
   routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<Page<JobInfo> | null>(req, res, next, oidcAuth, km.list.bind(km));
+    commonRequest<Page<JobInfo> | null>(req, res, next, oidcAuth, km.list.bind(km), logger);
   });
 
     /**
@@ -73,7 +74,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManag
 *                $ref: '#/components/schemas/ErrorResponse'
    */
   routerObj.post('/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<JobSubmiSuccess | string | null>(req, res, next, oidcAuth, km.submit.bind(km, hm, req.body as SubmitProps));
+    commonRequest<JobSubmiSuccess | string | null>(req, res, next, oidcAuth, km.submit.bind(km, hm, req.body as SubmitProps), logger);
   });
 
       /**
@@ -95,7 +96,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManag
     *                $ref: '#/components/schemas/ErrorResponse'
    */
   routerObj.delete('/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<null>(req, res, next, oidcAuth, km.delete.bind(km, { all: true }));
+    commonRequest<null>(req, res, next, oidcAuth, km.delete.bind(km, { all: true }), logger);
   });
   /**
     * @openapi
@@ -124,7 +125,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManag
    * 
    */
   routerObj.delete('/:jobName/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<null>(req, res, next, oidcAuth, km.delete.bind(km, { jobName: pathParam(req, "jobName") }));
+    commonRequest<null>(req, res, next, oidcAuth, km.delete.bind(km, { jobName: pathParam(req, "jobName") }), logger);
   });
 
   /**
@@ -157,7 +158,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManag
     *                $ref: '#/components/schemas/ErrorResponse'
    */
   routerObj.get('/:jobName/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<JobDetails | null>(req, res, next, oidcAuth, km.details.bind(km, { jobName: pathParam(req, "jobName") }));
+    commonRequest<JobDetails | null>(req, res, next, oidcAuth, km.details.bind(km, { jobName: pathParam(req, "jobName") }), logger);
   });
 
   /**
@@ -190,7 +191,7 @@ const jobsRouter = function(oidcAuth: OidcAuth, km: KubeManager, hm: HarborManag
     *                $ref: '#/components/schemas/ErrorResponse'
    */
   routerObj.get('/:jobName/logs/', async (req: Request, res: Response, next: NextFunction) => {
-    commonRequest<JobLog | null>(req, res, next, oidcAuth, km.log.bind(km, { jobName: pathParam(req, "jobName") }));
+    commonRequest<JobLog | null>(req, res, next, oidcAuth, km.log.bind(km, { jobName: pathParam(req, "jobName") }), logger);
   });
 
   return routerObj;

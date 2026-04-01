@@ -7,8 +7,9 @@ import type { NextFunction } from 'express';
 import { commonRequest } from './common.js';
 import type Page from '../../common/model/Page.js';
 import type KubeResourcesFlavor from '../../common/model/KubeResourcesFlavor.js';
+import type LoggerService from '../service/LoggerService.js';
 
-const resourcesFlavorsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
+const resourcesFlavorsRouter = function(oidcAuth: OidcAuth, km: KubeManager, logger: LoggerService) {
     let routerObj = express.Router();
     /**
     * @openapi
@@ -33,7 +34,7 @@ const resourcesFlavorsRouter = function(oidcAuth: OidcAuth, km: KubeManager) {
     *                $ref: '#/components/schemas/ErrorResponse'
      */
     routerObj.get('/', async (req: Request, res: Response, next: NextFunction) => {
-        commonRequest<Page<KubeResourcesFlavor> | null>(req, res, next, oidcAuth, km.resourcesFlavors.bind(km));
+        commonRequest<Page<KubeResourcesFlavor> | null>(req, res, next, oidcAuth, km.resourcesFlavors.bind(km), logger);
     });
 
     return routerObj;

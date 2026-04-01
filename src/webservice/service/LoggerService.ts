@@ -1,49 +1,72 @@
+import pino from "pino";
+import type { Log } from "../model/SettingsWebService.js";
+import path from "node:path";
+import fs from "node:fs";
+import { pinoHttp } from "pino-http";
+import { randomUUID } from "node:crypto";
 
 
 export default class LoggerService {
 
-    static DEBUG = 1;
-    static LOG = 2;
-    static INFO = 3;
-    static WARN = 4;
-    static ERROR = 5;
+    static DEFAULT_LEVEL = "info";
+    static DEFAULT_LOG_NAME = "jobman-webservice.log";
 
-    debug(message: string | null | undefined) {
-        this._print(LoggerService.DEBUG, message);
+    protected logger: pino.Logger;
+
+    constructor(logSettings: Log) {
+        const level = logSettings.level ?? LoggerService.DEFAULT_LEVEL;
+        const destination = path.join(logSettings.directory, logSettings.fileName ?? LoggerService.DEFAULT_LOG_NAME);
+        fs.mkdirSync(logSettings.directory, {recursive: true});
+        this.logger = pino({
+            level: 'info',
+            transport: {
+                targets: [
+                    {
+                        target: 'pino/file',
+                        options: { destination, mkdir: true },
+                        level
+                    },
+                    {
+                        target: 'pino-pretty',
+                        options: { colorize: true },
+                        level
+                    }
+                ]
+            }
+        });
     }
 
-    log(message: string | null | undefined) {
-        this._print(LoggerService.LOG, message);
+    debug(message: string) {
+        this.logger?.debug(message);
     }
 
-    info(message: string | null | undefined) {
-        this._print(LoggerService.INFO, message);
+    trace(message: string) {
+        this.logger?.trace(message);
     }
 
-    warn(message: string | null | undefined) {
-        this._print(LoggerService.WARN, message);
+    info(message: string) {
+        this.logger?.info(message);
     }
 
-    error(message: string | null | undefined) {
-        this._print(LoggerService.ERROR, message);
+    warn(message: string) {
+        this.logger?.warn(message);
     }
 
-    _print(verb: number, message: string | null | undefined) {
-        let header = "";
-        let f: Function | undefined = undefined;
-        switch (verb) {
-            case LoggerService.WARN: header = "[WARNING]"; f = console.warn; break;
-            case LoggerService.INFO: header = "[INFO]"; f = console.info; break;
-            case LoggerService.LOG: header = "[LOG]"; f = console.log; break;
-            case LoggerService.ERROR: header = "[ERROR]"; f = console.error; break;
-            case LoggerService.DEBUG: header = "[DEBUG]"; f = console.debug; break;
-            default: throw new Error(`Unhandled verb ${verb}`);
-        }
-        if (message) {
-            f?.(`${header} ${message}`);
-        } else {
-            f?.();
-        }
+    error(message: string | Error | object) {
+        this.logger?.error(message);
+    }
 
+    fatal(message: string | Error) {
+        this.logger?.fatal(message);
+    }
+
+    get middleware(): any {
+        return pinoHttp({
+            logger: this.logger,
+            genReqId: () => randomUUID(),
+            customProps: (req) => {
+                return { requestId: req.id };
+            }
+        });
     }
 }

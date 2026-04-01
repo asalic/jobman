@@ -24,6 +24,7 @@ import KubeManager from './service/KubeManager.js';
 import resourcesFlavorsRouter from './route/resources-flavors.js';
 import HarborManager from './service/HarborManager.js';
 import swaggerOptions from './swagger.js';
+import LoggerService from './service/LoggerService.js';
 
 
 //console.log(process.argv);
@@ -35,13 +36,18 @@ if (!values.settings) {
     console.error("[ERROR] Please load a settings file using either -s or --settings.");
     exit(1);
 }
+
+
 const settingsPath = values.settings ?? "";
 const appConf: SettingsWebService = AppConfLoader.getAppConf(settingsPath);//JSON.parse(fs.readFileSync(settingsPath, { encoding: 'utf8', flag: 'r' }));
-const oidcAuth = new OidcAuth(appConf);
-const km = new KubeManager(appConf);
-const hm = new HarborManager(appConf);
+
+const logger = new LoggerService(appConf.log); 
+
+const oidcAuth = new OidcAuth(appConf, logger);
+const km = new KubeManager(appConf, logger);
+const hm = new HarborManager(appConf, logger);
 // /const appConfig = AppConfig.get();
-console.log(`Jobman web service version '${process.env["npm_package_version"]}'`);
+logger.info(`Jobman web service version '${process.env["npm_package_version"]}'`);
 const app: Express = express();
 
 
@@ -65,6 +71,8 @@ app.use(
     }
   })
 );
+app.use(logger.middleware);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 //app.use(express.static(path.join(__dirname, 'public')));
@@ -72,10 +80,10 @@ app.use(express.urlencoded({ extended: false }));
 //app.use(BodyParser.json({ limit: appConfig.resultPostSize }));
 //app.use(BodyParser.urlencoded({ extended: true }));
 //app.use(upload.array());
-app.use(apiPath + "/jobs", jobsRouter(oidcAuth, km, hm));
-app.use(apiPath + "/images", imagesRouter(oidcAuth, hm));
-app.use(apiPath + "/queue", queueRouter(oidcAuth, km));
-app.use(apiPath + "/resources-flavors", resourcesFlavorsRouter(oidcAuth, km));
+app.use(apiPath + "/jobs", jobsRouter(oidcAuth, km, hm, logger));
+app.use(apiPath + "/images", imagesRouter(oidcAuth, hm, logger));
+app.use(apiPath + "/queue", queueRouter(oidcAuth, km, logger));
+app.use(apiPath + "/resources-flavors", resourcesFlavorsRouter(oidcAuth, km, logger));
 // 404 handler and pass to error handler
 app.use((req: Request, res: Response, next: NextFunction) => {
     next(HttpErrors(404, new BaseError("Not found", "Path " + req.path + " not found on the server", 404)));
@@ -89,7 +97,7 @@ const errorHandler: ErrorRequestHandler = (err: any, req: Request, res: Response
     // // render the error page
     // res.status(err.status || 500);
     // res.render('error');
-    console.error(err);
+    logger.error(err);
     //res.error = err;
     res.status(err.status).json(err);
 };
@@ -97,6 +105,6 @@ app.use(errorHandler);
 
 //app.set('trust proxy', appConf.sharing.email.trustProxy ?? false);
 
-console.log(`Running on PORT ${appConf.port}`);
+logger.info(`Running on PORT ${appConf.port}`);
 
 app.listen(appConf.port);
