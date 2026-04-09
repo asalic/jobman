@@ -1,6 +1,6 @@
 {
   "name": "jobman",
-  "version": "2.2.7",
+  "version": "2.3.0",
   "main": "./dist/index.ts",
   "exports": {
     "default": "./src/"
