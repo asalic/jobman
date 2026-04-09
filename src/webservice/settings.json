@@ -70,7 +70,7 @@
     },
     "defaultKubeURL": "",
     "log": {
-        "directory": "/tmp/jobman",
+        "directory": "/var/log/jobman",
         "level": "info",
         "fileName": "jobman-webservice.log"
     }

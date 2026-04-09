@@ -186,6 +186,21 @@ spec:
   
 ---
 
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jobman-service-logs
+  namespace: jobman-service
+spec:
+  storageClassName: managed-nfs-storage
+  accessModes:
+    - ReadWriteMany
+  resources:
+    requests:
+      storage: 256M
+
+---
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -207,7 +222,7 @@ spec:
         chaimeleon.eu/target: core-services
       serviceAccountName: jobman-serviceaccount
       containers:
-      - image: harbor.chaimeleon-eu.i3m.upv.es/chaimeleon-services/jobman-service:2.2.2
+      - image: jobman-service:2.2.7
         imagePullPolicy: Always
         name: jobman-service-deployment-container
         env:
@@ -224,13 +239,19 @@ spec:
         - containerPort: 8080
           name: api
         volumeMounts:
-        - name: webservice-configmap
-          mountPath: /opt/jobman/settings.json
-          subPath: settings.json
+          - name: logs
+            mountPath: /var/log/jobman
+          - name: webservice-configmap
+            mountPath: /opt/jobman/settings.json
+            subPath: settings.json
       volumes:
-      - name: webservice-configmap
-        configMap:
-          name: webservice-config
+        - name: logs
+          persistentVolumeClaim:
+            claimName: jobman-service-logs
+        - name: webservice-configmap
+          configMap:
+            defaultMode: 420
+            name: webservice-config
 
 ---
 
