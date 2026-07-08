@@ -8,9 +8,9 @@
       "outDir": "./dist/",
       "rootDir": "src",
     "lib": [
-      "ES2022"
+      "es2022", "dom"
     ],
-    "module": "nodenext",
+    "module": "NodeNext",
     "target": "ES2022",
     "strict": true,
     "esModuleInterop": true,
