@@ -1,5 +1,3 @@
-import fetch from "node-fetch";
-
 import { KubeOpReturn, KubeOpReturnStatus } from "../../common/model/KubeOpReturn.js";
 import type QueueResultDisplay from "../../common/model/QueueResultDisplay.js";
 import type SubmitProps from "../../common/model/args/SubmitProps.js";
@@ -73,9 +71,9 @@ export default class RestService {
                 method,
                 headers:{
                   "Authorization": `ApiToken ${this.apiToken}`,
-                  ...props && {"Content-Type": "application/json" }
+                  ...(props ? {"Content-Type": "application/json" } : {})
                 },
-                ...props && { body: JSON.stringify(props) }
+                ...(props ? { body: JSON.stringify(props) } : {} )
             }
             fetch(this.settings.webServiceUrl + path, opts)
                 .then(
@@ -102,9 +100,8 @@ export default class RestService {
 
                         }                        
                     }
-                },
-                e => reject(e)
-            )
+                }
+            ).catch(e => reject(e));
         });
     }
 

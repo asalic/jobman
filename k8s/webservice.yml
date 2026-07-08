@@ -41,7 +41,7 @@ rules:
         - extensions
         - policy
         - rbac.authorization.k8s.io
-  resources: ["jobs", "pods", "configmaps", "pods/log", "pods/status"]
+  resources: ["jobs", "pods", "configmaps", "pods/log", "pods/status", "services"]
   verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
 - apiGroups:
     - ""

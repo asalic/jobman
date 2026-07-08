@@ -5,6 +5,10 @@
         "gpuResources": [ ]
     },
     "job": {
+        "distributed": {
+            "maxWorkers": 10,
+            "defaultPort": 29500
+        },
         "serviceAccount": "jobman-k8s-logger-serviceaccount",
         "serviceAccountTokenSecret": "jobman-k8s-logger-serviceaccount-secret",
         "kubeRootCASecret": "kube-root-ca.crt",

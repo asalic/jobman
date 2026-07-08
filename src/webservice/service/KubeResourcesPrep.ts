@@ -33,7 +33,7 @@ export default class KubeResourcesPrep {
         }
     }
 
-    public static getKubeResources(settings: SettingsWebService, cmd?: string): KubeResourcesFlavor {
+    public static getKubeResources(settings: SettingsWebService, cmd?: string | null): KubeResourcesFlavor {
         let tmp: KubeResourcesFlavor | undefined = undefined;
         if (cmd) {
             const json: object = this.toJsonString(cmd); 

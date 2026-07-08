@@ -40,14 +40,16 @@ import type EnvEntry from "../EnvEntry.js";
 *           type: string
  */
 export default interface SubmitProps {
-    jobName?: string | undefined;
-    image?: string | undefined;
-    resources?: string | undefined;
-    commandArgs?: string[] | undefined;
+    jobName?: string | undefined | null;
+    image?: string | undefined | null;
+    resources?: string | undefined | null;
+    commandArgs?: string[] | undefined | null;
     //command?: boolean | undefined;
-    dryRun?: boolean | undefined;
-    annotations?:  string | undefined;
+    dryRun?: boolean | undefined | null;
+    annotations?:  string | undefined | null;
     datasetsList: string;
-    env?: EnvEntry[] | undefined;
+    env?: EnvEntry[] | undefined | null;
     logFile?: string;
+    workers?: number | undefined | null;
+    ports?: string | undefined | null;
 }

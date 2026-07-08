@@ -4,22 +4,22 @@ import { fileURLToPath } from 'url';
 import EAnnotationType from './model/EAnnotationType.js';
 import UnhandledValueException from './model/exception/UnhandledValueException.js';
 import type Annotation from './model/Annotation.js';
-import fetch from "node-fetch";
-import type { RequestInit, Response } from "node-fetch";
+import { validate, version } from 'uuid';
+
 
 export default class Util {
 
     public static getErrorMessage(error: unknown): string {
-  if (error instanceof Error) {
-    return error.message;
-  }
+        if (error instanceof Error) {
+            return error.message;
+        }
 
-  if (typeof error === "string") {
-    return error;
-  }
+        if (typeof error === "string") {
+            return error;
+        }
 
-  return "An unknown error occurred";
-}
+        return "An unknown error occurred";
+    }
 
 
     public static getDirName(): string {
@@ -41,6 +41,13 @@ export default class Util {
             "intel.com/gpu"
         ];
     }
+    public static getK8sErrorCode(err: any): number | undefined {
+        return (
+            err?.statusCode ??
+            err?.response?.statusCode ??
+            err?.body?.code
+        );
+    }
 
     public static getAnnotationsFromSettings(annotations: Annotation[] | null | undefined) {
         const r = Object.create(null);
@@ -49,7 +56,7 @@ export default class Util {
                 switch (a.valueType) {
                     case EAnnotationType.env: {
                         if (process.env[a.value])
-                            r[a.key] = process.env[a.value]; 
+                            r[a.key] = process.env[a.value];
                         break;
                     }
                     case EAnnotationType.string: r[a.key] = a.value; break;
@@ -58,6 +65,16 @@ export default class Util {
             }
         }
         return r;
+    }
+
+    public static isValidUUID(uuid: string, expectedVersion?: 1 | 3 | 4 | 5): boolean {
+        if (!validate(uuid)) {
+            return false; // Not a valid UUID format
+        }
+        if (expectedVersion !== undefined) {
+            return version(uuid) === expectedVersion;
+        }
+        return true;
     }
 
     public static async fetchRetry(url: string, init?: RequestInit, retry = 3, delayMs = 8000): Promise<Response | null> {
@@ -75,8 +92,8 @@ export default class Util {
                     throw e;
                 } else {
                     // If code not one of these, throw error
-                    if (!['EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(e["code"])) { 
-                        throw e; 
+                    if (!['EAI_AGAIN', 'ECONNRESET', 'ETIMEDOUT', 'ECONNREFUSED'].includes(e["code"])) {
+                        throw e;
                     } else {
                         console.warn(`Error code '${e["code"]}' when instrospecting token, attempt ${a}/${retry}, sleeping ${delayMs}ms`);
                         await new Promise(r => setTimeout(r, delayMs));

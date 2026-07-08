@@ -49,8 +49,14 @@ export interface SecurityContext {
     supplementalGroups?: Array<number>;
 }
 
+export interface DistributedJobSettings {
+    maxWorkers: number;
+    defaultPort: number;
+}
+
 
 export interface Job {
+    distributed: DistributedJobSettings;
     serviceAccount: string;
     serviceAccountTokenSecret: string;
     kubeRootCASecret: string;
